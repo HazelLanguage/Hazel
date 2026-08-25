@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+	<PackAsTool>true</PackAsTool>
+	<ToolCommandName>hazel</ToolCommandName>
+	<PackageId>Hazel</PackageId>
+	<Version>1.0.0</Version>
+	<Company>Hazel Foundation</Company>
+	<Authors>Angelina</Authors>
+	<Description>A compiler for the Hazel programming language.</Description>
+	<PackageLicenseExpression>MPL-2.0</PackageLicenseExpression>
+	<RepositoryUrl>https://github.com/HazelLanguage/Hazel</RepositoryUrl>
+	<PackageReadmeFile>README.md</PackageReadmeFile>
+	<Copyright>Copyright (c) 2026 Hazel Foundation</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

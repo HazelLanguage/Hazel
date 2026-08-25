@@ -1,0 +1,42 @@
+using Hazel.Diagnostics;
+
+namespace Hazel.Syntax.Declarations;
+
+public sealed class TypeDeclaration : Declaration
+{
+    public AccessModifiers AccessModifiers
+    {
+        get;
+    }
+    public TypeKind Kind
+    {
+        get;
+    }
+    public string Name
+    {
+        get;
+    }
+    public IReadOnlyList<Declaration> Members
+    {
+        get;
+    }
+
+    public TypeDeclaration(
+        AccessModifiers accessModifiers,
+        TypeKind kind,
+        string name,
+        IReadOnlyList<Declaration> members,
+        SourceSpan span)
+        : base(span)
+    {
+        AccessModifiers = accessModifiers;
+        Kind = kind;
+        Name = name;
+        Members = members;
+    }
+
+    public override T Accept<T>(AstVisitor<T> visitor)
+    {
+        return visitor.VisitType(this);
+    }
+}
