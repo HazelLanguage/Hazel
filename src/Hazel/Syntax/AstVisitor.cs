@@ -1,5 +1,6 @@
 using Hazel.Syntax.Declarations;
 using Hazel.Syntax.Expressions;
+using Hazel.Syntax.Imports;
 using Hazel.Syntax.Statements;
 using Hazel.Syntax.Types;
 
@@ -13,6 +14,9 @@ public abstract class AstVisitor<T>
     public virtual T VisitNamespace(
         NamespaceDeclaration node) => default!;
 
+    public virtual T VisitImport(
+        ImportDeclaration node) => default!;
+
     public virtual T VisitType(
         TypeDeclaration node) => default!;
 
@@ -22,8 +26,11 @@ public abstract class AstVisitor<T>
     public virtual T VisitParameter(
         Parameter node) => default!;
 
-    public virtual T VisitTypeReference(
-        TypeReference node) => default!;
+    public abstract T VisitNamedTypeReference(
+        NamedTypeReference node); 
+
+    public abstract T VisitBoundedStringTypeReference(
+        BoundedStringTypeReference node);
 
     public virtual T VisitReturn(
         ReturnStatement node) => default!;

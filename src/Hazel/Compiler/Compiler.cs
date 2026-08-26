@@ -1,10 +1,11 @@
 using Hazel.CodeGen.CSharp;
-using Hazel.Parsing.Declarations;
 using Hazel.Lexing;
 using Hazel.Lowering;
 using Hazel.Parsing;
+using Hazel.Parsing.Declarations;
 using Hazel.Parsing.Statements;
 using Hazel.Semantics;
+using Hazel.StandardLibrary;
 
 namespace Hazel.Compiler;
 
@@ -47,6 +48,9 @@ public sealed class Compiler
                 declarationRegistry));
 
         declarationRegistry.Register(
+            new ImportDeclarationParser());
+
+        declarationRegistry.Register(
             new TypeDeclarationParser(
                 memberRegistry));
 
@@ -70,8 +74,11 @@ public sealed class Compiler
         var ir = lowerer.Lower(ast);
 
         // 5. Generate C#
+        var standardLibrary =
+            new StandardLibraryRegistry();
+
         var generator =
-            new CSharpGenerator();
+            new CSharpGenerator(standardLibrary);
 
         return generator.Generate(ir);
     }

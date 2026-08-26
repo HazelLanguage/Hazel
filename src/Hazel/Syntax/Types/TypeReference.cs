@@ -1,25 +1,12 @@
 using Hazel.Diagnostics;
+using Hazel.Syntax.Types;
 
 namespace Hazel.Syntax.Types;
 
-public sealed class TypeReference : AstNode
+public abstract class TypeReference : AstNode
 {
-    public string Name
-    {
-        get;
-    }
-
-    public TypeReference(
-        string name,
-        SourceSpan span)
+    protected TypeReference(SourceSpan span)
         : base(span)
     {
-        Name = name;
-    }
-
-    public override T Accept<T>(
-        AstVisitor<T> visitor)
-    {
-        return visitor.VisitTypeReference(this);
     }
 }

@@ -9,20 +9,14 @@ A modern, high performance programming language designed for building scalable, 
 Install the CLI tool from NuGet:
 
 ```powershell
-dotnet tool install --global --source https://api.nuget.org/v3/index.json Hazel
+dotnet tool install --global Hazel
 ```
 
 or build and install from source:
 
 ```powershell
-dotnet pack --configuration Release
+dotnet pack
 dotnet tool install --global --source ./src/Hazel/bin/Release Hazel
-```
-
-To uninstall the CLI tool globally:
-
-```powershell
-dotnet tool uninstall --global Hazel
 ```
 
 ## 📖 Usage
@@ -37,6 +31,8 @@ Inline:
 
 ```powershell
 hazel -c "
+import Hazel.Strings.Bounded;
+
 namespace Hazel
 {
     internal class Calculator
@@ -62,7 +58,7 @@ dotnet run --project src/Hazel -- ...
 ## 🔣 Core Semantics
 
 * Mandatory Access Modifiers: Every type, member, and definition requires an explicit access modifier.
-* (soon) First-Class Bounded Strings: Strings with explicit length constraints are first-class types.
+* First-Class Bounded Strings: Strings with explicit length constraints are first-class citizens.
 
 ## 📄 License
 

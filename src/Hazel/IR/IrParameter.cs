@@ -1,3 +1,5 @@
+using Hazel.IR.Types;
+
 namespace Hazel.IR;
 
 public sealed class IrParameter : IrNode
@@ -6,12 +8,15 @@ public sealed class IrParameter : IrNode
     {
         get;
     }
-    public string Type
+
+    public IrTypeReference Type
     {
         get;
     }
 
-    public IrParameter(string name, string type)
+    public IrParameter(
+        string name,
+        IrTypeReference type)
     {
         Name = name;
         Type = type;

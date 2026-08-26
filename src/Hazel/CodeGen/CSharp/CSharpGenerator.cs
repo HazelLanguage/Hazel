@@ -3,18 +3,38 @@ using System.Text;
 using Hazel.IR;
 using Hazel.IR.Expressions;
 using Hazel.IR.Statements;
+using Hazel.IR.Types;
+using Hazel.StandardLibrary;
 using Hazel.Syntax.Declarations;
 
 namespace Hazel.CodeGen.CSharp;
 
 public sealed class CSharpGenerator
 {
+    private readonly IStandardLibraryRegistry _standardLibrary;
+
+    public CSharpGenerator(
+        IStandardLibraryRegistry standardLibrary)
+    {
+        _standardLibrary = standardLibrary;
+    }
+
     public string Generate(IrProgram program)
     {
         var builder = new StringBuilder();
 
         builder.AppendLine("using System;");
         builder.AppendLine();
+
+        foreach (string libraryName in program.ImportedLibraries)
+        {
+            if (_standardLibrary.TryGet(
+                    libraryName,
+                    out IStandardLibraryModule module))
+            {
+                module.EmitCSharpRuntime(builder);
+            }
+        }
 
         foreach (var ns in program.Namespaces)
         {
@@ -45,12 +65,18 @@ public sealed class CSharpGenerator
                     builder.Append("        ");
                     builder.Append(method.AccessModifiers.ToKeyword());
                     builder.Append(" ");
-                    builder.Append(method.ReturnType);
+                    builder.Append(
+                        EmitType(method.ReturnType));
                     builder.Append(" ");
                     builder.Append(method.Name);
                     builder.Append("(");
 
-                    builder.Append(string.Join(", ", method.Parameters.Select(p => $"{p.Type} {p.Name}")));
+                    builder.Append(
+                        string.Join(
+                            ", ",
+                            method.Parameters.Select(
+                                p =>
+                                    $"{EmitType(p.Type)} {p.Name}")));
 
                     builder.AppendLine(")");
                     builder.AppendLine("        {");
@@ -139,6 +165,34 @@ public sealed class CSharpGenerator
             _ => throw new Exception(
                 $"Unknown IR expression: " +
                 expression.GetType().Name)
+        };
+    }
+
+    private string EmitType(
+    IrTypeReference type)
+    {
+        return type switch
+        {
+            IrNamedType named =>
+                EmitNamedType(named),
+
+            IrBoundedStringType bounded =>
+                "Hazel.Runtime.BoundedString",
+
+            _ => throw new Exception(
+                $"Unknown IR type: {type.GetType().Name}")
+        };
+    }
+
+    private string EmitNamedType(
+    IrNamedType type)
+    {
+        return type.Name switch
+        {
+            "int" => "int",
+            "text" => "string",
+
+            _ => type.Name
         };
     }
 }

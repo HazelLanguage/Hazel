@@ -32,6 +32,9 @@ public enum TokenKind
     LeftParen,
     RightParen,
 
+    LeftBracket,
+    RightBracket,
+
     LeftBrace,
     RightBrace,
 

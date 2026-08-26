@@ -11,10 +11,17 @@ public sealed class SemanticAnalyzer
     : AstVisitor<TypeSymbol>
 {
     private Scope _scope = new();
+    private bool _boundedStringsImported;
 
     public void Analyze(
-        CompilationUnit compilationUnit)
+    CompilationUnit compilationUnit)
     {
+        _boundedStringsImported =
+            compilationUnit.Imports.Any(
+                import =>
+                    import.Name ==
+                    "Hazel.Strings.Bounded");
+
         compilationUnit.Accept(this);
     }
 
@@ -91,14 +98,36 @@ public sealed class SemanticAnalyzer
         return UnknownTypeSymbol.Instance;
     }
 
-    public override TypeSymbol VisitTypeReference(
-        TypeReference node)
+    public override TypeSymbol VisitNamedTypeReference(
+    NamedTypeReference node)
     {
         return node.Name switch
         {
             "int" => IntTypeSymbol.Instance,
+            "text" => TextTypeSymbol.Instance,
+
             _ => UnknownTypeSymbol.Instance
         };
+    }
+
+    public override TypeSymbol VisitBoundedStringTypeReference(
+        BoundedStringTypeReference node)
+    {
+        if (!_boundedStringsImported)
+        {
+            throw new Exception(
+                "Bounded string types require " +
+                "'Hazel.Strings.Bounded' to be imported.");
+        }
+
+        if (node.MaximumLength < 0)
+        {
+            throw new Exception(
+                "Bounded string maximum length cannot be negative.");
+        }
+
+        return new BoundedStringTypeSymbol(
+            node.MaximumLength);
     }
 
     public override TypeSymbol VisitReturn(

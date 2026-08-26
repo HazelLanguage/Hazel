@@ -2,6 +2,7 @@ using Hazel.Diagnostics;
 using Hazel.Lexing;
 using Hazel.Syntax;
 using Hazel.Syntax.Declarations;
+using Hazel.Syntax.Imports;
 using Hazel.Syntax.Statements;
 using Hazel.Syntax.Types;
 
@@ -28,6 +29,7 @@ public sealed class Parser
 
     public CompilationUnit Parse()
     {
+        var imports = new List<ImportDeclaration>();
         var declarations = new List<Declaration>();
 
         while (!Check(TokenKind.EOF))
@@ -50,6 +52,7 @@ public sealed class Parser
         }
 
         return new CompilationUnit(
+            imports,
             declarations,
             span);
     }
@@ -139,9 +142,35 @@ public sealed class Parser
 
     public TypeReference ConsumeTypeReference()
     {
-        Token token = ConsumeIdentifier();
+        Token token = Consume(TokenKind.Identifier);
 
-        return new TypeReference(
+        if (token.Text == "text" &&
+            Check(TokenKind.LeftBracket))
+        {
+            Consume(TokenKind.LeftBracket);
+
+            Token lengthToken =
+                Consume(TokenKind.Integer);
+
+            Consume(TokenKind.RightBracket);
+
+            if (!int.TryParse(
+                    lengthToken.Text,
+                    out int maximumLength))
+            {
+                throw new Exception(
+                    $"Invalid bounded string length " +
+                    $"'{lengthToken.Text}'.");
+            }
+
+            return new BoundedStringTypeReference(
+                maximumLength,
+                SourceSpan.FromBounds(
+                    token.Span.Start,
+                    lengthToken.Span.End));
+        }
+
+        return new NamedTypeReference(
             token.Text,
             token.Span);
     }

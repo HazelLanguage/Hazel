@@ -1,10 +1,14 @@
+using System.Reflection.Metadata;
 using Hazel.IR;
 using Hazel.IR.Expressions;
 using Hazel.IR.Statements;
+using Hazel.IR.Types;
 using Hazel.Syntax;
 using Hazel.Syntax.Declarations;
 using Hazel.Syntax.Expressions;
+using Hazel.Syntax.Imports;
 using Hazel.Syntax.Statements;
+using Hazel.Syntax.Types;
 
 namespace Hazel.Lowering;
 
@@ -24,19 +28,27 @@ public sealed class AstToIrLowerer
 
         foreach (var declaration in node.Declarations)
         {
-            if (declaration is NamespaceDeclaration namespaceDeclaration)
+            switch (declaration)
             {
-                var irNamespace = (IrNamespace)LowerNamespace(namespaceDeclaration);
-                program.Namespaces.Add(irNamespace);
-            }
-            else if (declaration is TypeDeclaration typeDeclaration)
-            {
-                throw new NotSupportedException("Types must be inside a namespace.");
-            }
-            else
-            {
-                throw new NotSupportedException(
-                    $"Cannot lower declaration {declaration.GetType().Name}");
+                case ImportDeclaration import:
+                    program.ImportedLibraries.Add(import.Name);
+                    break;
+
+                case NamespaceDeclaration namespaceDeclaration:
+                    var irNamespace =
+                        (IrNamespace)LowerNamespace(namespaceDeclaration);
+
+                    program.Namespaces.Add(irNamespace);
+                    break;
+
+                case TypeDeclaration:
+                    throw new NotSupportedException(
+                        "Types must be inside a namespace.");
+
+                default:
+                    throw new NotSupportedException(
+                        $"Cannot lower declaration " +
+                        $"{declaration.GetType().Name}");
             }
         }
 
@@ -85,11 +97,17 @@ public sealed class AstToIrLowerer
     public IrNode LowerMethod(
         MethodDeclaration node)
     {
-        var irMethod = new IrMethod(node.AccessModifiers, node.Name, node.ReturnType.Name);
+        var irMethod = new IrMethod(
+            node.AccessModifiers,
+            node.Name,
+            (IrTypeReference)node.ReturnType.Accept(this));
 
         foreach (var param in node.Parameters)
         {
-            irMethod.Parameters.Add(new IrParameter(param.Name, param.Type.Name));
+            irMethod.Parameters.Add(
+                new IrParameter(
+                    param.Name,
+                    (IrTypeReference)param.Type.Accept(this)));
         }
 
         foreach (var statement in node.Body)
@@ -167,5 +185,18 @@ public sealed class AstToIrLowerer
             : null;
 
         return new IrReturnStatement(expression);
+    }
+
+    public override IrNode VisitNamedTypeReference(
+    NamedTypeReference node)
+    {
+        return new IrNamedType(node.Name);
+    }
+
+    public override IrNode VisitBoundedStringTypeReference(
+        BoundedStringTypeReference node)
+    {
+        return new IrBoundedStringType(
+            node.MaximumLength);
     }
 }
