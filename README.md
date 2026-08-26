@@ -9,15 +9,17 @@ A modern, high performance programming language designed for building scalable, 
 Install the CLI tool from NuGet:
 
 ```powershell
-dotnet tool install --global Hazel
+dotnet tool install -g Hazel
 ```
 
 or build and install from source:
 
 ```powershell
 dotnet pack
-dotnet tool install --global --source ./src/Hazel/bin/Release Hazel
+dotnet tool install -g --source ./src/Hazel/bin/Release Hazel
 ```
+
+Download syntax highlighting for Visual Studio from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=AlinaWan.hzsh0001).
 
 ## 📖 Usage
 
@@ -31,16 +33,13 @@ Inline:
 
 ```powershell
 hazel -c "
-import Hazel.Strings.Bounded;
-
 namespace Hazel
 {
     internal class Calculator
     {
         private protected int Add(int a, int b)
         {
-            var h = 8;
-            return a + b * h;
+            return a + b;
         }
     }
 }

@@ -2,4 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Hazel/Hazel.csproj" />
   </Folder>
+  <Project Path="extensions/Hazel.VisualStudio/Hazel.VisualStudio.csproj" Id="d3212e03-318d-4f6e-a1ea-d54ea8db5b45">
+    <Deploy />
+  </Project>
 </Solution>

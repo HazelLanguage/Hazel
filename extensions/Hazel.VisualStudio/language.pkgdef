@@ -1,0 +1,6 @@
+[$RootKey$\TextMate\Repositories]
+"Hazel"="$PackageFolder$\Syntaxes"
+
+[$RootKey$\Languages\File Extensions\.hz]
+@="{ad032452-db63-4247-9c8b-2c2d3a18f8ee}"
+"Grammar"="source.hz"
