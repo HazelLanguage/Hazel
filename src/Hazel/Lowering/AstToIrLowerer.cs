@@ -3,6 +3,8 @@ using Hazel.IR;
 using Hazel.IR.Expressions;
 using Hazel.IR.Statements;
 using Hazel.IR.Types;
+using Hazel.Semantics;
+using Hazel.Semantics.Types;
 using Hazel.Syntax;
 using Hazel.Syntax.Declarations;
 using Hazel.Syntax.Expressions;
@@ -158,6 +160,32 @@ public sealed class AstToIrLowerer
         return (IrExpression)expression.Accept(this);
     }
 
+    private static IrValueType LowerValueType(
+    TypeSymbol type)
+    {
+        return type switch
+        {
+            BoundedStringTypeSymbol bounded =>
+                new IrBoundedStringType(
+                    bounded.MaximumLength),
+
+            BuiltinTypeSymbol { Name: "string" } =>
+                IrStringType.Instance,
+
+            BuiltinTypeSymbol builtin
+                when builtin.BitWidth is int bitWidth &&
+                     builtin.IsSigned is bool isSigned =>
+                new IrIntegerType(
+                    bitWidth,
+                    isSigned),
+
+            _ =>
+                throw new NotSupportedException(
+                    $"Cannot lower semantic type " +
+                    $"{type.GetType().Name}.")
+        };
+    }
+
     public override IrNode VisitInteger(
         IntegerExpression node)
     {
@@ -165,9 +193,18 @@ public sealed class AstToIrLowerer
     }
 
     public override IrNode VisitIdentifier(
-        IdentifierExpression node)
+    IdentifierExpression node)
     {
-        return new IrVariable(node.Name);
+        if (node.ResolvedType == null)
+        {
+            throw new InvalidOperationException(
+                $"Identifier '{node.Name}' " +
+                "has not been semantically resolved.");
+        }
+
+        return new IrVariable(
+            node.Name,
+            LowerValueType(node.ResolvedType));
     }
 
     public override IrNode VisitBinary(

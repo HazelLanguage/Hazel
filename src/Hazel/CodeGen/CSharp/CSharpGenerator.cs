@@ -12,6 +12,7 @@ namespace Hazel.CodeGen.CSharp;
 public sealed class CSharpGenerator
 {
     private readonly IStandardLibraryRegistry _standardLibrary;
+    private IrTypeReference? _currentReturnType;
 
     public CSharpGenerator(
         IStandardLibraryRegistry standardLibrary)
@@ -79,6 +80,8 @@ public sealed class CSharpGenerator
 
                 foreach (var method in type.Methods)
                 {
+                    _currentReturnType = method.ReturnType;
+
                     builder.Append("        ");
                     builder.Append(method.AccessModifiers.ToKeyword());
                     builder.Append(" ");
@@ -104,6 +107,8 @@ public sealed class CSharpGenerator
                     }
 
                     builder.AppendLine("        }");
+
+                    _currentReturnType = null;
                 }
 
                 builder.AppendLine("    }");
@@ -128,8 +133,48 @@ public sealed class CSharpGenerator
                 builder.Append(" ");
                 builder.Append(variable.Name);
                 builder.Append(" = ");
-                builder.Append(
-                    EmitExpression(variable.Value));
+                if (variable.Type is IrBoundedStringType targetType)
+                {
+                    string expression =
+                        EmitExpression(variable.Value);
+
+                    if (variable.Value.Type is IrBoundedStringType sourceType)
+                    {
+                        if (sourceType.MaximumLength <=
+                            targetType.MaximumLength)
+                        {
+                            // Widening: no conversion necessary.
+                            builder.Append(expression);
+                        }
+                        else
+                        {
+                            // Narrowing: runtime validation.
+                            builder.Append(
+                                $"Hazel.Runtime.BoundedString.Narrow(" +
+                                $"{expression}, " +
+                                $"{targetType.MaximumLength})");
+                        }
+                    }
+                    else if (variable.Value.Type is IrStringType)
+                    {
+                        // text -> bounded<N>
+                        builder.Append(
+                            $"new Hazel.Runtime.BoundedString(" +
+                            $"{expression}, " +
+                            $"{targetType.MaximumLength})");
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException(
+                            $"Cannot convert {variable.Value.Type} " +
+                            $"to bounded string.");
+                    }
+                }
+                else
+                {
+                    builder.Append(
+                        EmitExpression(variable.Value));
+                }
                 builder.AppendLine(";");
 
                 break;
@@ -150,8 +195,47 @@ public sealed class CSharpGenerator
                 if (returnStatement.Expression != null)
                 {
                     builder.Append(" ");
-                    builder.Append(
-                        EmitExpression(returnStatement.Expression));
+                    if (_currentReturnType is IrBoundedStringType boundedReturnType)
+                    {
+                        string expression =
+                            EmitExpression(returnStatement.Expression);
+
+                        if (returnStatement.Expression.Type
+                            is IrBoundedStringType sourceType)
+                        {
+                            if (sourceType.MaximumLength <=
+                                boundedReturnType.MaximumLength)
+                            {
+                                builder.Append(expression);
+                            }
+                            else
+                            {
+                                builder.Append(
+                                    $"Hazel.Runtime.BoundedString.Narrow(" +
+                                    $"{expression}, " +
+                                    $"{boundedReturnType.MaximumLength})");
+                            }
+                        }
+                        else if (returnStatement.Expression.Type is IrStringType)
+                        {
+                            builder.Append(
+                                $"new Hazel.Runtime.BoundedString(" +
+                                $"{expression}, " +
+                                $"{boundedReturnType.MaximumLength})");
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException(
+                                $"Cannot return " +
+                                $"{returnStatement.Expression.Type} " +
+                                $"as bounded string.");
+                        }
+                    }
+                    else
+                    {
+                        builder.Append(
+                            EmitExpression(returnStatement.Expression));
+                    }
                 }
 
                 builder.AppendLine(";");

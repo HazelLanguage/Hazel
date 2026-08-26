@@ -11,6 +11,12 @@ public sealed class IrBoundedStringType
     public IrBoundedStringType(
         int maximumLength)
     {
+        if (maximumLength < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(maximumLength));
+        }
+
         MaximumLength = maximumLength;
     }
 }

@@ -21,19 +21,9 @@ public sealed class SemanticAnalyzer
         if (source == destination)
             return true;
 
-        // string -> bounded string
-        //
-        // The actual length must be checked at runtime unless
-        // the source is a compile-time-known string literal.
-        if (source == StringTypeSymbol.Instance &&
-            destination is BoundedStringTypeSymbol)
-        {
-            return true;
-        }
-
         // bounded string -> string
         if (source is BoundedStringTypeSymbol &&
-            destination == StringTypeSymbol.Instance)
+            destination == BuiltinTypes.String)
         {
             return true;
         }
@@ -231,11 +221,14 @@ public sealed class SemanticAnalyzer
     public override TypeSymbol VisitInteger(
     IntegerExpression node)
     {
-        return BuiltinTypes.Integer32;
+        node.ResolvedType =
+            BuiltinTypes.Integer32;
+
+        return node.ResolvedType;
     }
 
     public override TypeSymbol VisitIdentifier(
-        IdentifierExpression node)
+    IdentifierExpression node)
     {
         var symbol =
             _scope.Lookup(node.Name);
@@ -245,6 +238,8 @@ public sealed class SemanticAnalyzer
             throw new Exception(
                 $"Undefined variable '{node.Name}'");
         }
+
+        node.ResolvedType = symbol.Type;
 
         return symbol.Type;
     }
@@ -274,8 +269,11 @@ public sealed class SemanticAnalyzer
         if (left != right)
         {
             throw new Exception(
-                $"Cannot perform arithmetic between different integer types '{left.Name}' and '{right.Name}'.");
+                $"Cannot perform arithmetic between different integer types " +
+                $"'{left.Name}' and '{right.Name}'.");
         }
+
+        node.ResolvedType = left;
 
         return left;
     }
@@ -296,7 +294,7 @@ public sealed class SemanticAnalyzer
             node.Value.Accept(this);
 
         if (declaredType is BoundedStringTypeSymbol bounded &&
-            valueType == StringTypeSymbol.Instance &&
+            valueType == BuiltinTypes.String &&
             node.Value is StringExpression stringExpression)
         {
             if (stringExpression.Value.Length >
@@ -335,9 +333,12 @@ public sealed class SemanticAnalyzer
     }
 
     public override TypeSymbol VisitString(
-        StringExpression node)
+    StringExpression node)
     {
-        return StringTypeSymbol.Instance;
+        node.ResolvedType =
+            BuiltinTypes.String;
+
+        return node.ResolvedType;
     }
 
     public override TypeSymbol VisitExpressionStatement(

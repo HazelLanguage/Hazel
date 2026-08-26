@@ -20,13 +20,12 @@ public sealed class BoundedStringModule
                 public readonly struct BoundedString
                 {
                     private readonly string _value;
-                    private readonly int _maximumLength;
 
                     public BoundedString(
                         string value,
                         int maximumLength)
                     {
-                        if (maximumLength < 0)
+                        if (maximumLength <= 0)
                         {
                             throw new System.ArgumentOutOfRangeException(
                                 nameof(maximumLength));
@@ -40,17 +39,35 @@ public sealed class BoundedStringModule
                         }
 
                         _value = value;
-                        _maximumLength = maximumLength;
                     }
 
                     public int Length =>
                         _value.Length;
 
-                    public int MaximumLength =>
-                        _maximumLength;
-
                     public override string ToString() =>
                         _value;
+
+                    public static BoundedString Narrow(
+                        BoundedString value,
+                        int maximumLength)
+                    {
+                        if (maximumLength <= 0)
+                        {
+                            throw new System.ArgumentOutOfRangeException(
+                                nameof(maximumLength));
+                        }
+
+                        if (value._value.Length > maximumLength)
+                        {
+                            throw new System.ArgumentException(
+                                "Bounded string exceeds maximum length.",
+                                nameof(maximumLength));
+                        }
+
+                        return new BoundedString(
+                            value._value,
+                            maximumLength);
+                    }
                 }
             }
             """);

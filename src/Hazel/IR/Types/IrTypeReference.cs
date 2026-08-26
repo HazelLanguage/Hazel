@@ -1,5 +1,6 @@
 namespace Hazel.IR.Types;
 
-public abstract class IrTypeReference : IrNode
+public abstract class IrTypeReference
+    : IrValueType
 {
 }

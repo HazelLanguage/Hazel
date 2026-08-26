@@ -1,11 +1,14 @@
 namespace Hazel.IR.Expressions;
 
+using Hazel.IR.Types;
+
 public sealed class IrBinary : IrExpression
 {
     public IrExpression Left
     {
         get;
     }
+
     public IrExpression Right
     {
         get;
@@ -15,6 +18,9 @@ public sealed class IrBinary : IrExpression
     {
         get;
     }
+
+    public override IrValueType Type =>
+        Left.Type;
 
     public IrBinary(
         IrExpression left,
