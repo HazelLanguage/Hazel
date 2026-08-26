@@ -140,6 +140,25 @@ public sealed class Parser
         return modifiers;
     }
 
+    public TypeModifiers ConsumeTypeModifiers()
+    {
+        TypeModifiers modifiers = TypeModifiers.None;
+
+        while (Peek().Kind.IsTypeModifier())
+        {
+            Token token = Advance();
+            modifiers |= token.Kind.ToTypeModifier();
+        }
+
+        if (!modifiers.IsValid())
+        {
+            throw new Exception(
+                "Invalid combination of type modifiers.");
+        }
+
+        return modifiers;
+    }
+
     public TypeReference ConsumeTypeReference()
     {
         Token token = Peek();

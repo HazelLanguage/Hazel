@@ -28,6 +28,9 @@ public sealed class TypeDeclarationParser : IDeclarationParser, IMemberParser
         AccessModifiers accessModifiers =
             parser.ConsumeAccessModifiers();
 
+        TypeModifiers typeModifiers =
+            parser.ConsumeTypeModifiers();
+
         Token kindToken = parser.Advance();
 
         TypeKind kind = kindToken.Kind switch
@@ -59,6 +62,7 @@ public sealed class TypeDeclarationParser : IDeclarationParser, IMemberParser
 
         return new TypeDeclaration(
             accessModifiers,
+            typeModifiers,
             kind,
             name.Text,
             members,

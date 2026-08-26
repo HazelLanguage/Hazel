@@ -53,8 +53,25 @@ public sealed class CSharpGenerator
                 };
 
                 builder.Append("    ");
-                builder.Append(type.AccessModifiers.ToKeyword());
-                builder.Append(" ");
+
+                string access =
+                    type.AccessModifiers.ToKeyword();
+
+                string modifiers =
+                    type.Modifiers != TypeModifiers.None ? type.Modifiers.ToKeyword() : string.Empty;
+
+                if (!string.IsNullOrEmpty(access))
+                {
+                    builder.Append(access);
+                    builder.Append(" ");
+                }
+
+                if (!string.IsNullOrEmpty(modifiers))
+                {
+                    builder.Append(modifiers);
+                    builder.Append(" ");
+                }
+
                 builder.Append(keyword);
                 builder.Append(" ");
                 builder.AppendLine(type.Name);
@@ -195,15 +212,9 @@ public sealed class CSharpGenerator
     }
 
     private string EmitNamedType(
-    IrNamedType type)
+        IrNamedType type)
     {
-        return type.Name switch
-        {
-            "integer" => "int",
-            "string" => "string",
-
-            _ => type.Name
-        };
+        return CSharpTypeExtensions.ToCSharpTypeName(type.Name);
     }
 
     private string EmitStringLiteral(

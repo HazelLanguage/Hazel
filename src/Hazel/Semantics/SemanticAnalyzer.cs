@@ -91,6 +91,20 @@ public sealed class SemanticAnalyzer
     public override TypeSymbol VisitType(
         TypeDeclaration node)
     {
+        if (node.Modifiers.HasFlag(TypeModifiers.Sealed) &&
+            node.Kind != TypeKind.Class)
+        {
+            throw new Exception(
+                "The 'sealed' modifier can only be applied to classes.");
+        }
+
+        if (node.Modifiers.HasFlag(TypeModifiers.Abstract) &&
+            node.Kind != TypeKind.Class)
+        {
+            throw new Exception(
+                "The 'abstract' modifier can only be applied to classes.");
+        }
+
         foreach (var member in node.Members)
         {
             member.Accept(this);
@@ -149,14 +163,7 @@ public sealed class SemanticAnalyzer
     public override TypeSymbol VisitNamedTypeReference(
     NamedTypeReference node)
     {
-        return node.Name switch
-        {
-            "integer" => IntTypeSymbol.Instance,
-            "string" => StringTypeSymbol.Instance,
-
-            _ => throw new Exception(
-                $"Unknown type '{node.Name}'.")
-        };
+        return BuiltinTypes.Get(node.Name);
     }
 
     public override TypeSymbol VisitBoundedStringTypeReference(
@@ -192,6 +199,16 @@ public sealed class SemanticAnalyzer
                 "Return statement is not inside a method.");
         }
 
+        if (_currentReturnType == BuiltinTypes.Void)
+        {
+            if (node.Value is not null)
+            {
+                throw new Exception(
+                    "Cannot return a value from a void method.");
+            }
+            return BuiltinTypes.Void;
+        }
+
         if (node.Value is null)
         {
             throw new Exception(
@@ -212,9 +229,9 @@ public sealed class SemanticAnalyzer
     }
 
     public override TypeSymbol VisitInteger(
-        IntegerExpression node)
+    IntegerExpression node)
     {
-        return IntTypeSymbol.Instance;
+        return BuiltinTypes.Integer32;
     }
 
     public override TypeSymbol VisitIdentifier(
@@ -232,6 +249,13 @@ public sealed class SemanticAnalyzer
         return symbol.Type;
     }
 
+    private static bool IsIntegerType(TypeSymbol type)
+    {
+        return type is BuiltinTypeSymbol builtin &&
+               builtin.BitWidth != null &&
+               builtin.IsSigned != null;
+    }
+
     public override TypeSymbol VisitBinary(
         BinaryExpression node)
     {
@@ -241,14 +265,19 @@ public sealed class SemanticAnalyzer
         var right =
             node.Right.Accept(this);
 
-        if (left != IntTypeSymbol.Instance ||
-            right != IntTypeSymbol.Instance)
+        if (!IsIntegerType(left) || !IsIntegerType(right))
         {
             throw new Exception(
                 "Binary arithmetic requires integers.");
         }
 
-        return IntTypeSymbol.Instance;
+        if (left != right)
+        {
+            throw new Exception(
+                $"Cannot perform arithmetic between different integer types '{left.Name}' and '{right.Name}'.");
+        }
+
+        return left;
     }
 
     public override TypeSymbol VisitVariable(
@@ -256,6 +285,12 @@ public sealed class SemanticAnalyzer
     {
         TypeSymbol declaredType =
             node.Type.Accept(this);
+
+        if (declaredType == BuiltinTypes.Void)
+        {
+            throw new Exception(
+                "Variables cannot have type 'void'.");
+        }
 
         TypeSymbol valueType =
             node.Value.Accept(this);

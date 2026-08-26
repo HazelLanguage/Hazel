@@ -191,6 +191,7 @@ public sealed class Lexer
             "private" => TokenKind.Private,
             "protected" => TokenKind.Protected,
             "internal" => TokenKind.Internal,
+            "sealed" => TokenKind.Sealed,
 
             "namespace" => TokenKind.Namespace,
             "import" => TokenKind.Import,

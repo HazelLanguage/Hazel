@@ -12,6 +12,8 @@ public enum TokenKind
     Private,
     Protected,
     Internal,
+    Sealed,
+    Abstract,
 
     Namespace,
     Import,

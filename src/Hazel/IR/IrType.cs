@@ -9,6 +9,10 @@ public sealed class IrType : IrNode
     {
         get;
     }
+    public TypeModifiers Modifiers
+    {
+        get;
+    }
     public string Name
     {
         get;
@@ -19,9 +23,14 @@ public sealed class IrType : IrNode
     }
     public List<IrMethod> Methods { get; } = new();
 
-    public IrType(AccessModifiers accessModifiers, string name, TypeKind kind)
+    public IrType(
+        AccessModifiers accessModifiers,
+        TypeModifiers modifiers,
+        string name,
+        TypeKind kind)
     {
         AccessModifiers = accessModifiers;
+        Modifiers = modifiers;
         Name = name;
         Kind = kind;
     }

@@ -2,7 +2,7 @@
 
 ![Hazel Logo](https://raw.githubusercontent.com/HazelLanguage/Hazel/main/assets/Hazel_Logo.webp)
 
-A modern, high performance programming language designed for building scalable, efficient, and enterprise-grade applications.
+A modern, high performance programming language designed for building scalable, type-safe, and enterprise-grade applications.
 
 ## 📦 Installation
 
@@ -37,11 +37,11 @@ import Hazel.Strings.Bounded;
 
 namespace Hazel
 {
-    internal class Calculator
+    internal sealed class Calculator
     {
-        private protected integer Add(integer a, integer b)
+        private protected integer32 Add(integer32 a, integer32 b)
         {
-            variable integer sum = a + b;
+            variable integer32 sum = a + b;
             return sum;
         }
 
@@ -68,6 +68,7 @@ dotnet run --project src/Hazel -- ...
 * Hazel Standard Library: The standard library wraps complex functionality in a simple, easy-to-use API.
 * Mandatory Access Modifiers: Every type, member, and definition requires an explicit access modifier.
 * Mandatory Variable Types: All variable assignments start with the `variable` keyword, and all variable types are required to be explicitly declared.
+* Explicitly Sized Integers: Integer and unsigned integer types must declare their exact bit size (e.g., `integer32`, `uinteger32`) rather than using a bare `integer` keyword.
 * First-Class Bounded Strings: Strings carry explicit length constraints as part of their type. These constraints are checked statically whenever possible for safety, and seamlessly deferred to runtime when values are dynamic, giving the best of both static guarantees and runtime flexibility compared to standard C# strings.
   ```hazel
   import Hazel.Strings.Bounded;

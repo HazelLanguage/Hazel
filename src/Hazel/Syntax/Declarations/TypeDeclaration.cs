@@ -8,6 +8,10 @@ public sealed class TypeDeclaration : Declaration
     {
         get;
     }
+    public TypeModifiers Modifiers
+    {
+        get;
+    }
     public TypeKind Kind
     {
         get;
@@ -23,6 +27,7 @@ public sealed class TypeDeclaration : Declaration
 
     public TypeDeclaration(
         AccessModifiers accessModifiers,
+        TypeModifiers modifiers,
         TypeKind kind,
         string name,
         IReadOnlyList<Declaration> members,
@@ -30,6 +35,7 @@ public sealed class TypeDeclaration : Declaration
         : base(span)
     {
         AccessModifiers = accessModifiers;
+        Modifiers = modifiers;
         Kind = kind;
         Name = name;
         Members = members;

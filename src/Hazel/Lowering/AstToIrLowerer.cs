@@ -83,7 +83,11 @@ public sealed class AstToIrLowerer
     private IrNode LowerType(
         TypeDeclaration node)
     {
-        var irType = new IrType(node.AccessModifiers, node.Name, node.Kind);
+        var irType = new IrType(
+            node.AccessModifiers,
+            node.Modifiers,
+            node.Name,
+            node.Kind);
 
         foreach (var member in node.Members)
         {
