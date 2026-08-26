@@ -142,37 +142,53 @@ public sealed class Parser
 
     public TypeReference ConsumeTypeReference()
     {
-        Token token = Consume(TokenKind.Identifier);
+        Token token = Peek();
 
-        if (token.Text == "text" &&
-            Check(TokenKind.LeftBracket))
+        if (token.Kind == TokenKind.String)
         {
-            Consume(TokenKind.LeftBracket);
+            Advance();
 
-            Token lengthToken =
-                Consume(TokenKind.Integer);
-
-            Consume(TokenKind.RightBracket);
-
-            if (!int.TryParse(
-                    lengthToken.Text,
-                    out int maximumLength))
+            if (Check(TokenKind.LeftBracket))
             {
-                throw new Exception(
-                    $"Invalid bounded string length " +
-                    $"'{lengthToken.Text}'.");
+                Consume(TokenKind.LeftBracket);
+
+                Token lengthToken =
+                    Consume(TokenKind.Integer);
+
+                Consume(TokenKind.RightBracket);
+
+                if (!int.TryParse(
+                        lengthToken.Text,
+                        out int maximumLength))
+                {
+                    throw new Exception(
+                        $"Invalid bounded string length " +
+                        $"'{lengthToken.Text}'.");
+                }
+
+                return new BoundedStringTypeReference(
+                    maximumLength,
+                    SourceSpan.FromBounds(
+                        token.Span.Start,
+                        lengthToken.Span.End));
             }
 
-            return new BoundedStringTypeReference(
-                maximumLength,
-                SourceSpan.FromBounds(
-                    token.Span.Start,
-                    lengthToken.Span.End));
+            return new NamedTypeReference(
+                token.Text,
+                token.Span);
         }
 
-        return new NamedTypeReference(
-            token.Text,
-            token.Span);
+        if (token.Kind == TokenKind.Identifier)
+        {
+            Advance();
+
+            return new NamedTypeReference(
+                token.Text,
+                token.Span);
+        }
+
+        throw new Exception(
+            $"Expected type, got {token.Kind}");
     }
 
     // ─────────────────────────────────────────────

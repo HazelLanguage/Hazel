@@ -33,13 +33,22 @@ Inline:
 
 ```powershell
 hazel -c "
+import Hazel.Strings.Bounded;
+
 namespace Hazel
 {
     internal class Calculator
     {
-        private protected int Add(int a, int b)
+        private protected integer Add(integer a, integer b)
         {
-            return a + b;
+            variable integer sum = a + b;
+            return sum;
+        }
+
+        public string[32] ProcessUsername(string[32] rawInput)
+        {
+            variable string[32] cleanName = rawInput;
+            return cleanName;
         }
     }
 }
@@ -56,8 +65,19 @@ dotnet run --project src/Hazel -- ...
 
 ## 🔣 Core Semantics
 
+* Hazel Standard Library: The standard library wraps complex functionality in a simple, easy-to-use API.
 * Mandatory Access Modifiers: Every type, member, and definition requires an explicit access modifier.
-* First-Class Bounded Strings: Strings with explicit length constraints are first-class citizens.
+* Mandatory Variable Types: All variable assignments start with the `variable` keyword, and all variable types are required to be explicitly declared.
+* First-Class Bounded Strings: Strings carry explicit length constraints as part of their type. These constraints are checked statically whenever possible for safety, and seamlessly deferred to runtime when values are dynamic, giving the best of both static guarantees and runtime flexibility compared to standard C# strings.
+  ```hazel
+  import Hazel.Strings.Bounded;
+
+  variable string[32] username = "Alice";
+  ```
+
+## 🧩 Contributing
+
+We welcome contributions from the community! Tests and TextMate grammars are highly needed.
 
 ## 📄 License
 

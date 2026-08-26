@@ -26,10 +26,16 @@ public sealed class BoundedStringModule
                         string value,
                         int maximumLength)
                     {
+                        if (maximumLength < 0)
+                        {
+                            throw new System.ArgumentOutOfRangeException(
+                                nameof(maximumLength));
+                        }
+
                         if (value.Length > maximumLength)
                         {
                             throw new System.ArgumentException(
-                                "String exceeds maximum length.",
+                                "Bounded string exceeds maximum length.",
                                 nameof(value));
                         }
 

@@ -11,17 +11,58 @@ public sealed class SemanticAnalyzer
     : AstVisitor<TypeSymbol>
 {
     private Scope _scope = new();
-    private bool _boundedStringsImported;
+    private TypeSymbol? _currentReturnType;
+
+    private static bool AreAssignable(
+    TypeSymbol source,
+    TypeSymbol destination)
+    {
+        // Exact same type.
+        if (source == destination)
+            return true;
+
+        // string -> bounded string
+        //
+        // The actual length must be checked at runtime unless
+        // the source is a compile-time-known string literal.
+        if (source == StringTypeSymbol.Instance &&
+            destination is BoundedStringTypeSymbol)
+        {
+            return true;
+        }
+
+        // bounded string -> string
+        if (source is BoundedStringTypeSymbol &&
+            destination == StringTypeSymbol.Instance)
+        {
+            return true;
+        }
+
+        // bounded string[N] -> bounded string[M]
+        //
+        // A string with a maximum length of N can safely fit into
+        // one with a maximum length of M when N <= M.
+        if (source is BoundedStringTypeSymbol sourceBounded &&
+            destination is BoundedStringTypeSymbol destinationBounded)
+        {
+            return sourceBounded.MaximumLength <=
+                   destinationBounded.MaximumLength;
+        }
+
+        return false;
+    }
+
+    private static bool IsStringLiteralWithinBounds(
+    StringExpression expression,
+    BoundedStringTypeSymbol destination)
+    {
+        return expression.Value.Length <=
+               destination.MaximumLength;
+    }
 
     public void Analyze(
     CompilationUnit compilationUnit)
     {
-        _boundedStringsImported =
-            compilationUnit.Imports.Any(
-                import =>
-                    import.Name ==
-                    "Hazel.Strings.Bounded");
-
         compilationUnit.Accept(this);
     }
 
@@ -59,15 +100,22 @@ public sealed class SemanticAnalyzer
     }
 
     public override TypeSymbol VisitMethod(
-        MethodDeclaration node)
+    MethodDeclaration node)
     {
-        // Enter a new nested scope for the method
+        TypeSymbol returnType =
+            node.ReturnType.Accept(this);
+
+        var previousReturnType =
+            _currentReturnType;
+
+        _currentReturnType = returnType;
+
         _scope = new Scope(_scope);
 
-        // Define parameters in the method scope
         foreach (var parameter in node.Parameters)
         {
-            TypeSymbol paramType = parameter.Type.Accept(this);
+            TypeSymbol paramType =
+                parameter.Type.Accept(this);
 
             var symbol = new Symbol(
                 parameter.Name,
@@ -86,8 +134,8 @@ public sealed class SemanticAnalyzer
             statement.Accept(this);
         }
 
-        // Restore the parent scope when leaving the method
         _scope = _scope.Parent!;
+        _currentReturnType = previousReturnType;
 
         return UnknownTypeSymbol.Instance;
     }
@@ -103,27 +151,21 @@ public sealed class SemanticAnalyzer
     {
         return node.Name switch
         {
-            "int" => IntTypeSymbol.Instance,
-            "text" => TextTypeSymbol.Instance,
+            "integer" => IntTypeSymbol.Instance,
+            "string" => StringTypeSymbol.Instance,
 
-            _ => UnknownTypeSymbol.Instance
+            _ => throw new Exception(
+                $"Unknown type '{node.Name}'.")
         };
     }
 
     public override TypeSymbol VisitBoundedStringTypeReference(
-        BoundedStringTypeReference node)
+    BoundedStringTypeReference node)
     {
-        if (!_boundedStringsImported)
+        if (node.MaximumLength <= 0)
         {
             throw new Exception(
-                "Bounded string types require " +
-                "'Hazel.Strings.Bounded' to be imported.");
-        }
-
-        if (node.MaximumLength < 0)
-        {
-            throw new Exception(
-                "Bounded string maximum length cannot be negative.");
+                "Bounded string length must be greater than zero.");
         }
 
         return new BoundedStringTypeSymbol(
@@ -131,12 +173,42 @@ public sealed class SemanticAnalyzer
     }
 
     public override TypeSymbol VisitReturn(
-        ReturnStatement node)
+    ReturnStatement node)
     {
-        if (node.Value is null)
-            return UnknownTypeSymbol.Instance;
+        TypeSymbol actualType;
 
-        return node.Value.Accept(this);
+        if (node.Value is null)
+        {
+            actualType = UnknownTypeSymbol.Instance;
+        }
+        else
+        {
+            actualType = node.Value.Accept(this);
+        }
+
+        if (_currentReturnType is null)
+        {
+            throw new Exception(
+                "Return statement is not inside a method.");
+        }
+
+        if (node.Value is null)
+        {
+            throw new Exception(
+                $"Method must return '{_currentReturnType.Name}'.");
+        }
+
+        if (!AreAssignable(
+                actualType,
+                _currentReturnType))
+        {
+            throw new Exception(
+                $"Cannot return value of type " +
+                $"'{actualType.Name}' from method " +
+                $"returning '{_currentReturnType.Name}'.");
+        }
+
+        return actualType;
     }
 
     public override TypeSymbol VisitInteger(
@@ -180,15 +252,42 @@ public sealed class SemanticAnalyzer
     }
 
     public override TypeSymbol VisitVariable(
-        VariableStatement node)
+    VariableStatement node)
     {
-        TypeSymbol type =
+        TypeSymbol declaredType =
+            node.Type.Accept(this);
+
+        TypeSymbol valueType =
             node.Value.Accept(this);
+
+        if (declaredType is BoundedStringTypeSymbol bounded &&
+            valueType == StringTypeSymbol.Instance &&
+            node.Value is StringExpression stringExpression)
+        {
+            if (stringExpression.Value.Length >
+                bounded.MaximumLength)
+            {
+                throw new Exception(
+                    $"String literal is {stringExpression.Value.Length} " +
+                    $"characters long, but '{node.Name}' has a maximum " +
+                    $"length of {bounded.MaximumLength}.");
+            }
+        }
+        else if (!AreAssignable(
+                     valueType,
+                     declaredType))
+        {
+            throw new Exception(
+                $"Cannot assign value of type " +
+                $"'{valueType.Name}' to variable " +
+                $"'{node.Name}' of type " +
+                $"'{declaredType.Name}'.");
+        }
 
         var symbol = new Symbol(
             node.Name,
             SymbolKind.Variable,
-            type);
+            declaredType);
 
         if (!_scope.Define(symbol))
         {
@@ -197,7 +296,13 @@ public sealed class SemanticAnalyzer
                 "is already defined.");
         }
 
-        return type;
+        return declaredType;
+    }
+
+    public override TypeSymbol VisitString(
+        StringExpression node)
+    {
+        return StringTypeSymbol.Instance;
     }
 
     public override TypeSymbol VisitExpressionStatement(

@@ -1,4 +1,5 @@
-namespace Hazel.IR.Statements;
+using Hazel.IR;
+using Hazel.IR.Types;
 
 public sealed class IrVariableDeclaration
     : IrStatement
@@ -7,6 +8,12 @@ public sealed class IrVariableDeclaration
     {
         get;
     }
+
+    public IrTypeReference Type
+    {
+        get;
+    }
+
     public IrExpression Value
     {
         get;
@@ -14,9 +21,11 @@ public sealed class IrVariableDeclaration
 
     public IrVariableDeclaration(
         string name,
+        IrTypeReference type,
         IrExpression value)
     {
         Name = name;
+        Type = type;
         Value = value;
     }
 }

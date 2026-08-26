@@ -641,7 +641,7 @@
           </dict>
           <dict>
             <key>begin</key>
-            <string>\b(?:(global)\s+)?(import)\b\s*+(?!\(|var\b)</string>
+            <string>\b(?:(global)\s+)?(import)\b\s*+(?!\(|variable\b)</string>
             <key>beginCaptures</key>
             <dict>
               <key>1</key>
@@ -4496,7 +4496,7 @@
                 <key>match</key>
                 <string>(?x)
 (?:
-  (?:(\bref)\s+)?(\bvar\b)| # ref local
+  (?:(\bref)\s+)?(\bvariable\b)| # ref local
   (?&lt;type_name&gt;
     (?:
       (?:ref\s+)?   # ref local
@@ -5312,7 +5312,7 @@
       <dict>
         <key>begin</key>
         <string>(?x) # e.g. var (x, y) = GetPoint();
-(?:\b(var)\b\s*)
+(?:\b(variable)\b\s*)
 (?&lt;tuple&gt;\((?:[^\(\)]|\g&lt;tuple&gt;)+\))\s*
 (?=;|=|\))</string>
         <key>beginCaptures</key>
@@ -5504,7 +5504,7 @@
         <key>match</key>
         <string>(?x) # e.g. int x OR var x
 (?:
-  \b(var)\b|
+  \b(variable)\b|
   (?&lt;type_name&gt;
     (?:
       (?:
@@ -5559,7 +5559,7 @@
         <key>match</key>
         <string>(?x) # e.g. int x OR var x
 (?:
-  \b(var)\b|
+  \b(variable)\b|
   (?&lt;type_name&gt;
     (?:
       (?:

@@ -6,6 +6,7 @@ public enum TokenKind
 
     Identifier,
     Integer,
+    StringLiteral,
 
     Public,
     Private,
@@ -20,6 +21,7 @@ public enum TokenKind
     Record,
 
     Var,
+    String,
     Return,
 
     Plus,

@@ -106,7 +106,9 @@ public sealed class CSharpGenerator
         {
             case IrVariableDeclaration variable:
 
-                builder.Append("            var ");
+                builder.Append("            ");
+                builder.Append(EmitType(variable.Type));
+                builder.Append(" ");
                 builder.Append(variable.Name);
                 builder.Append(" = ");
                 builder.Append(
@@ -162,6 +164,14 @@ public sealed class CSharpGenerator
                 $"{binary.Operator} " +
                 $"{EmitExpression(binary.Right)})",
 
+            IrString stringExpression =>
+                EmitStringLiteral(stringExpression.Value),
+
+            IrBoundedString boundedString =>
+                $"new Hazel.Runtime.BoundedString(" +
+                $"{EmitStringLiteral(boundedString.Value)}, " +
+                $"{boundedString.MaximumLength})",
+
             _ => throw new Exception(
                 $"Unknown IR expression: " +
                 expression.GetType().Name)
@@ -189,10 +199,23 @@ public sealed class CSharpGenerator
     {
         return type.Name switch
         {
-            "int" => "int",
-            "text" => "string",
+            "integer" => "int",
+            "string" => "string",
 
             _ => type.Name
         };
+    }
+
+    private string EmitStringLiteral(
+    string value)
+    {
+        return "\"" +
+            value
+                .Replace("\\", "\\\\")
+                .Replace("\"", "\\\"")
+                .Replace("\r", "\\r")
+                .Replace("\n", "\\n")
+                .Replace("\t", "\\t") +
+            "\"";
     }
 }

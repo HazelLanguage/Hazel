@@ -53,6 +53,9 @@ public sealed class Lexer
         if (char.IsDigit(c))
             return ReadNumber(start, line, column);
 
+        if (c == '"')
+            return ReadString(start, line, column);
+
         return c switch
         {
             '+' => MakeToken(
@@ -100,6 +103,20 @@ public sealed class Lexer
             ')' => MakeToken(
                 TokenKind.RightParen,
                 ")",
+                start,
+                line,
+                column),
+
+            '[' => MakeToken(
+                TokenKind.LeftBracket,
+                "[",
+                start,
+                line,
+                column),
+
+            ']' => MakeToken(
+                TokenKind.RightBracket,
+                "]",
                 start,
                 line,
                 column),
@@ -167,7 +184,8 @@ public sealed class Lexer
 
         TokenKind kind = text switch
         {
-            "var" => TokenKind.Var,
+            "variable" => TokenKind.Var,
+            "string" => TokenKind.String,
 
             "public" => TokenKind.Public,
             "private" => TokenKind.Private,
@@ -211,6 +229,37 @@ public sealed class Lexer
 
         return new Token(
             TokenKind.Integer,
+            text,
+            new SourceSpan(
+                start,
+                _position - start),
+            line,
+            column);
+    }
+
+    private Token ReadString(
+    int start,
+    int line,
+    int column)
+    {
+        while (!IsAtEnd() && Peek() != '"')
+        {
+            Advance();
+        }
+
+        if (IsAtEnd())
+        {
+            throw new Exception(
+                $"Unterminated string literal at {line}:{column}");
+        }
+
+        // Consume closing quote
+        Advance();
+
+        string text = _source[start.._position];
+
+        return new Token(
+            TokenKind.StringLiteral,
             text,
             new SourceSpan(
                 start,

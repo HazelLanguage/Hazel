@@ -47,6 +47,9 @@ public abstract class AstVisitor<T>
     public virtual T VisitVariable(
         VariableStatement node) => default!;
 
+    public virtual T VisitString(
+        StringExpression node) => default!;
+
     public virtual T VisitExpressionStatement(
         ExpressionStatement node) => default!;
 }

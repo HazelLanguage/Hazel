@@ -57,6 +57,15 @@ public sealed class ExpressionParser
                 integer.Span);
         }
 
+        if (Match(TokenKind.StringLiteral, out var stringLiteral))
+        {
+            string value = stringLiteral.Text[1..^1];
+
+            return new StringExpression(
+                value,
+                stringLiteral.Span);
+        }
+
         if (Match(TokenKind.Identifier, out var identifier))
         {
             return new IdentifierExpression(

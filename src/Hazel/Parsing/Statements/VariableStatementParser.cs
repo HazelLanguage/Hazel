@@ -1,6 +1,7 @@
 using Hazel.Diagnostics;
 using Hazel.Lexing;
 using Hazel.Syntax.Statements;
+using Hazel.Syntax.Types;
 
 namespace Hazel.Parsing.Statements;
 
@@ -15,6 +16,9 @@ public sealed class VariableStatementParser : IStatementParser
     {
         Token varToken =
             parser.Consume(TokenKind.Var);
+
+        TypeReference type =
+            parser.ConsumeTypeReference();
 
         Token name =
             parser.Consume(TokenKind.Identifier);
@@ -38,6 +42,7 @@ public sealed class VariableStatementParser : IStatementParser
             expression.Span.End);
 
         return new VariableStatement(
+            type,
             name.Text,
             expression,
             span);

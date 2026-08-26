@@ -9,12 +9,15 @@ using Hazel.Syntax.Expressions;
 using Hazel.Syntax.Imports;
 using Hazel.Syntax.Statements;
 using Hazel.Syntax.Types;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Hazel.Lowering;
 
 public sealed class AstToIrLowerer
     : AstVisitor<IrNode>
 {
+    private IrTypeReference? _currentReturnType;
+
     public IrProgram Lower(
         CompilationUnit compilationUnit)
     {
@@ -95,28 +98,60 @@ public sealed class AstToIrLowerer
     }
 
     public IrNode LowerMethod(
-        MethodDeclaration node)
+    MethodDeclaration node)
     {
-        var irMethod = new IrMethod(
-            node.AccessModifiers,
-            node.Name,
-            (IrTypeReference)node.ReturnType.Accept(this));
+        var returnType =
+            (IrTypeReference)node.ReturnType.Accept(this);
 
-        foreach (var param in node.Parameters)
+        var previousReturnType =
+            _currentReturnType;
+
+        _currentReturnType =
+            returnType;
+
+        try
         {
-            irMethod.Parameters.Add(
-                new IrParameter(
-                    param.Name,
-                    (IrTypeReference)param.Type.Accept(this)));
+            var irMethod = new IrMethod(
+                node.AccessModifiers,
+                node.Name,
+                returnType);
+
+            foreach (var param in node.Parameters)
+            {
+                irMethod.Parameters.Add(
+                    new IrParameter(
+                        param.Name,
+                        (IrTypeReference)param.Type.Accept(this)));
+            }
+
+            foreach (var statement in node.Body)
+            {
+                irMethod.Body.Add(
+                    (IrStatement)statement.Accept(this));
+            }
+
+            return irMethod;
+        }
+        finally
+        {
+            _currentReturnType =
+                previousReturnType;
+        }
+    }
+
+    private IrExpression LowerExpression(
+    Expression expression,
+    IrTypeReference? expectedType)
+    {
+        if (expression is StringExpression stringExpression &&
+            expectedType is IrBoundedStringType boundedString)
+        {
+            return new IrBoundedString(
+                stringExpression.Value,
+                boundedString.MaximumLength);
         }
 
-        foreach (var statement in node.Body)
-        {
-            irMethod.Body.Add(
-                (IrStatement)statement.Accept(this));
-        }
-
-        return irMethod;
+        return (IrExpression)expression.Accept(this);
     }
 
     public override IrNode VisitInteger(
@@ -157,14 +192,26 @@ public sealed class AstToIrLowerer
     }
 
     public override IrNode VisitVariable(
-        VariableStatement node)
+    VariableStatement node)
     {
+        var type =
+            (IrTypeReference)node.Type.Accept(this);
+
         var value =
-            (IrExpression)node.Value.Accept(this);
+            LowerExpression(
+                node.Value,
+                type);
 
         return new IrVariableDeclaration(
             node.Name,
+            type,
             value);
+    }
+
+    public override IrNode VisitString(
+    StringExpression node)
+    {
+        return new IrString(node.Value);
     }
 
     public override IrNode VisitExpressionStatement(
@@ -178,13 +225,20 @@ public sealed class AstToIrLowerer
     }
 
     public override IrNode VisitReturn(
-        ReturnStatement node)
+    ReturnStatement node)
     {
-        var expression = node.Value != null
-            ? (IrExpression)node.Value.Accept(this)
-            : null;
+        IrExpression? expression = null;
 
-        return new IrReturnStatement(expression);
+        if (node.Value != null)
+        {
+            expression =
+                LowerExpression(
+                    node.Value,
+                    _currentReturnType);
+        }
+
+        return new IrReturnStatement(
+            expression);
     }
 
     public override IrNode VisitNamedTypeReference(
