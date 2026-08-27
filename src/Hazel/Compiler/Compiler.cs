@@ -4,6 +4,7 @@ using Hazel.Lowering;
 using Hazel.Parsing;
 using Hazel.Parsing.Declarations;
 using Hazel.Parsing.Statements;
+using Hazel.Runtime;
 using Hazel.Semantics;
 using Hazel.StandardLibrary;
 
@@ -74,11 +75,14 @@ public sealed class Compiler
         var ir = lowerer.Lower(ast);
 
         // 5. Generate C#
+        var runtime =
+            new RuntimeRegistry();
+
         var standardLibrary =
             new StandardLibraryRegistry();
 
         var generator =
-            new CSharpGenerator(standardLibrary);
+            new CSharpGenerator(runtime, standardLibrary);
 
         return generator.Generate(ir);
     }

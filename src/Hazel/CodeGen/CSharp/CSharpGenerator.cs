@@ -4,6 +4,7 @@ using Hazel.IR;
 using Hazel.IR.Expressions;
 using Hazel.IR.Statements;
 using Hazel.IR.Types;
+using Hazel.Runtime;
 using Hazel.StandardLibrary;
 using Hazel.Syntax.Declarations;
 
@@ -11,12 +12,15 @@ namespace Hazel.CodeGen.CSharp;
 
 public sealed class CSharpGenerator
 {
+    private readonly RuntimeRegistry _runtime;
     private readonly IStandardLibraryRegistry _standardLibrary;
     private IrTypeReference? _currentReturnType;
 
     public CSharpGenerator(
+        RuntimeRegistry runtime,
         IStandardLibraryRegistry standardLibrary)
     {
+        _runtime = runtime;
         _standardLibrary = standardLibrary;
     }
 
@@ -24,8 +28,10 @@ public sealed class CSharpGenerator
     {
         var builder = new StringBuilder();
 
-        builder.AppendLine("using System;");
-        builder.AppendLine();
+        foreach (IRuntimeComponent component in _runtime.Components)
+        {
+            component.EmitCSharpRuntime(builder);
+        }
 
         foreach (string libraryName in program.ImportedLibraries)
         {

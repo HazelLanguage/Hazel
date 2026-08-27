@@ -1,5 +1,3 @@
-using Hazel.StandardLibrary.BoundedStrings;
-
 namespace Hazel.StandardLibrary;
 
 public sealed class StandardLibraryRegistry
@@ -13,8 +11,6 @@ public sealed class StandardLibraryRegistry
     {
         _modules = new()
         {
-            [BoundedStringModule.ModuleName] =
-                new BoundedStringModule()
         };
     }
 

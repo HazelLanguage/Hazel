@@ -6,7 +6,7 @@ A modern, high performance programming language designed for building scalable, 
 
 ## 📦 Installation
 
-Install the CLI tool from NuGet:
+Install the compiler and CLI tool from NuGet:
 
 ```powershell
 dotnet tool install -g Hazel
@@ -33,8 +33,6 @@ Inline:
 
 ```powershell
 hazel -c "
-import Hazel.Strings.Bounded;
-
 namespace Hazel
 {
     internal sealed class Calculator
@@ -72,11 +70,9 @@ dotnet run --project src/Hazel -- ...
 
 ### First-Class Bounded Strings
 
-Strings carry explicit length constraints as part of their type. These constraints are checked statically whenever possible for safety, and seamlessly deferred to runtime when values are dynamic, giving the best of both static guarantees and runtime flexibility compared to standard C# strings.
+Strings can carry explicit length constraints as part of their type. These constraints are checked statically whenever possible for safety, and seamlessly deferred to runtime when values are dynamic, giving the best of both static guarantees and runtime flexibility compared to standard C# strings.
 
 ```hazel
-import Hazel.Strings.Bounded;
-
 variable string[32] username = "Alice";
 ```
 

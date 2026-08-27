@@ -1,16 +1,10 @@
 using System.Text;
 
-namespace Hazel.StandardLibrary.BoundedStrings;
+namespace Hazel.Runtime.Components;
 
-public sealed class BoundedStringModule
-    : IStandardLibraryModule
+public sealed class BoundedStringRuntime
+    : IRuntimeComponent
 {
-    public const string ModuleName =
-        "Hazel.Strings.Bounded";
-
-    public string Name =>
-        ModuleName;
-
     public void EmitCSharpRuntime(
         StringBuilder builder)
     {

@@ -429,4 +429,8 @@ FodyWeavers.xsd
 *.msp
 
 # Hazel files
+# This will be removed, or at the least granularly unignored in the
+# future as the runtime/standard library becomes rewritten in Hazel
+# This is currently just a catch-all to avoid random Hazel files
+# being committed to the repository
 *.hz
