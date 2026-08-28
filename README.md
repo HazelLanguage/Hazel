@@ -70,7 +70,9 @@ dotnet run --project src/Hazel -- ...
 
 ### First-Class Bounded Strings
 
-Strings can carry explicit length constraints as part of their type. These constraints are checked statically whenever possible for safety, and seamlessly deferred to runtime when values are dynamic, giving the best of both static guarantees and runtime flexibility compared to standard C# strings.
+Strings can carry explicit length constraints as part of their type. These constraints are checked statically whenever possible for safety, and seamlessly deferred to runtime when values are dynamic, giving the best of both static guarantees and runtime flexibility compared to standard C# strings. A variable of type `string` without square brackets is considered unbounded, while a variable of type `string[n]` is considered bounded to a maximum of `n` characters.
+
+Bounded strings allocate their entire fixed capacity as a single, contiguous block of memory which live directly on the call stack when declared locally, or inline when embedded within other structures, classes, or arrays. For example, rather than pointing to a separate managed heap allocation, a `string[32]` reserves its full 32-character buffer upfront (64 bytes for the buffer plus 4 bytes for the length).
 
 ```hazel
 variable string[32] username = "Alice";

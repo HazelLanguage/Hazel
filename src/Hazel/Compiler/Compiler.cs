@@ -5,6 +5,7 @@ using Hazel.Parsing;
 using Hazel.Parsing.Declarations;
 using Hazel.Parsing.Statements;
 using Hazel.Runtime;
+using Hazel.Runtime.Components;
 using Hazel.Semantics;
 using Hazel.StandardLibrary;
 
@@ -76,13 +77,18 @@ public sealed class Compiler
 
         // 5. Generate C#
         var runtime =
-            new RuntimeRegistry();
+            new RuntimeRegistry(
+            [
+                new BoundedStringRuntime()
+            ]);
 
         var standardLibrary =
             new StandardLibraryRegistry();
 
         var generator =
-            new CSharpGenerator(runtime, standardLibrary);
+            new CSharpGenerator(
+                runtime,
+                standardLibrary);
 
         return generator.Generate(ir);
     }

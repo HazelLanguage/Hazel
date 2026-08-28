@@ -6,12 +6,11 @@ public sealed class RuntimeRegistry
 {
     private readonly IReadOnlyList<IRuntimeComponent> _components;
 
-    public RuntimeRegistry()
+    public RuntimeRegistry(
+        IEnumerable<IRuntimeComponent> components)
     {
         _components =
-        [
-            new BoundedStringRuntime()
-        ];
+            components.ToArray();
     }
 
     public IEnumerable<IRuntimeComponent> Components =>

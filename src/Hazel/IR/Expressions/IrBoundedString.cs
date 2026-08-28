@@ -22,7 +22,7 @@ public sealed class IrBoundedString
         string value,
         int maximumLength)
     {
-        if (maximumLength < 0)
+        if (maximumLength <= 0)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(maximumLength));

@@ -5,6 +5,7 @@ using Hazel.IR.Expressions;
 using Hazel.IR.Statements;
 using Hazel.IR.Types;
 using Hazel.Runtime;
+using Hazel.Runtime.Components;
 using Hazel.StandardLibrary;
 using Hazel.Syntax.Declarations;
 
@@ -26,6 +27,11 @@ public sealed class CSharpGenerator
 
     public string Generate(IrProgram program)
     {
+        foreach (IRuntimeComponent component in _runtime.Components)
+        {
+            component.RegisterRequirements(program);
+        }
+
         var builder = new StringBuilder();
 
         foreach (IRuntimeComponent component in _runtime.Components)
@@ -149,25 +155,16 @@ public sealed class CSharpGenerator
                         if (sourceType.MaximumLength <=
                             targetType.MaximumLength)
                         {
-                            // Widening: no conversion necessary.
                             builder.Append(expression);
-                        }
-                        else
-                        {
-                            // Narrowing: runtime validation.
-                            builder.Append(
-                                $"Hazel.Runtime.BoundedString.Narrow(" +
-                                $"{expression}, " +
-                                $"{targetType.MaximumLength})");
                         }
                     }
                     else if (variable.Value.Type is IrStringType)
                     {
                         // text -> bounded<N>
                         builder.Append(
-                            $"new Hazel.Runtime.BoundedString(" +
-                            $"{expression}, " +
-                            $"{targetType.MaximumLength})");
+                            $"new Hazel.Runtime.BoundedString" +
+                            $"{targetType.MaximumLength}(" +
+                            $"{expression})");
                     }
                     else
                     {
@@ -225,9 +222,9 @@ public sealed class CSharpGenerator
                         else if (returnStatement.Expression.Type is IrStringType)
                         {
                             builder.Append(
-                                $"new Hazel.Runtime.BoundedString(" +
-                                $"{expression}, " +
-                                $"{boundedReturnType.MaximumLength})");
+                                $"new Hazel.Runtime.BoundedString" +
+                                $"{boundedReturnType.MaximumLength}(" +
+                                $"{expression})");
                         }
                         else
                         {
@@ -275,9 +272,9 @@ public sealed class CSharpGenerator
                 EmitStringLiteral(stringExpression.Value),
 
             IrBoundedString boundedString =>
-                $"new Hazel.Runtime.BoundedString(" +
-                $"{EmitStringLiteral(boundedString.Value)}, " +
-                $"{boundedString.MaximumLength})",
+                $"new Hazel.Runtime.BoundedString" +
+                $"{boundedString.MaximumLength}(" +
+                $"{EmitStringLiteral(boundedString.Value)})",
 
             _ => throw new Exception(
                 $"Unknown IR expression: " +
@@ -294,7 +291,7 @@ public sealed class CSharpGenerator
                 EmitNamedType(named),
 
             IrBoundedStringType bounded =>
-                "Hazel.Runtime.BoundedString",
+                $"Hazel.Runtime.BoundedString{bounded.MaximumLength}",
 
             _ => throw new Exception(
                 $"Unknown IR type: {type.GetType().Name}")

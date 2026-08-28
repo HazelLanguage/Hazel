@@ -1,71 +1,147 @@
 using System.Text;
+using Hazel.IR;
+using Hazel.IR.Expressions;
+using Hazel.IR.Statements;
+using Hazel.IR.Types;
 
 namespace Hazel.Runtime.Components;
 
 public sealed class BoundedStringRuntime
     : IRuntimeComponent
 {
-    public void EmitCSharpRuntime(
-        StringBuilder builder)
+    private readonly HashSet<int> _bounds = new();
+
+    public void RegisterRequirements(
+        IrProgram program)
     {
-        builder.AppendLine("""
-            namespace Hazel.Runtime
+        foreach (var ns in program.Namespaces)
+        {
+            foreach (var type in ns.Types)
             {
-                public readonly struct BoundedString
+                foreach (var method in type.Methods)
                 {
-                    private readonly string _value;
+                    RegisterType(method.ReturnType);
 
-                    public BoundedString(
-                        string value,
-                        int maximumLength)
+                    foreach (var parameter in method.Parameters)
                     {
-                        if (maximumLength <= 0)
-                        {
-                            throw new System.ArgumentOutOfRangeException(
-                                nameof(maximumLength));
-                        }
-
-                        if (value.Length > maximumLength)
-                        {
-                            throw new System.ArgumentException(
-                                "Bounded string exceeds maximum length.",
-                                nameof(value));
-                        }
-
-                        _value = value;
+                        RegisterType(parameter.Type);
                     }
 
-                    public int Length =>
-                        _value.Length;
-
-                    public override string ToString() =>
-                        _value;
-
-                    public static BoundedString Narrow(
-                        BoundedString value,
-                        int maximumLength)
+                    foreach (var statement in method.Body)
                     {
-                        if (maximumLength <= 0)
-                        {
-                            throw new System.ArgumentOutOfRangeException(
-                                nameof(maximumLength));
-                        }
-
-                        if (value._value.Length > maximumLength)
-                        {
-                            throw new System.ArgumentException(
-                                "Bounded string exceeds maximum length.",
-                                nameof(maximumLength));
-                        }
-
-                        return new BoundedString(
-                            value._value,
-                            maximumLength);
+                        RegisterStatement(statement);
                     }
                 }
             }
-            """);
+        }
+    }
 
-        builder.AppendLine();
+    private void RegisterType(
+        IrTypeReference type)
+    {
+        if (type is IrBoundedStringType bounded)
+        {
+            _bounds.Add(
+                bounded.MaximumLength);
+        }
+    }
+
+    private void RegisterExpression(
+        IrExpression expression)
+    {
+        switch (expression)
+        {
+            case IrBoundedString bounded:
+                _bounds.Add(
+                    bounded.MaximumLength);
+                break;
+        }
+    }
+
+    private void RegisterStatement(
+        IrStatement statement)
+    {
+        switch (statement)
+        {
+            case IrVariableDeclaration variable:
+                RegisterType(variable.Type);
+                RegisterExpression(variable.Value);
+                break;
+
+            case IrExpressionStatement expression:
+                RegisterExpression(
+                    expression.Expression);
+                break;
+
+            case IrReturnStatement returnStatement:
+                if (returnStatement.Expression is not null)
+                {
+                    RegisterExpression(
+                        returnStatement.Expression);
+                }
+
+                break;
+
+            default:
+                throw new InvalidOperationException(
+                    $"Unknown IR statement: " +
+                    statement.GetType().Name);
+        }
+    }
+
+    public void EmitCSharpRuntime(
+        StringBuilder builder)
+    {
+        foreach (int maximumLength in _bounds.Order())
+        {
+            EmitBoundedString(
+                builder,
+                maximumLength);
+        }
+    }
+
+    private static void EmitBoundedString(
+    StringBuilder builder,
+    int maximumLength)
+    {
+        builder.AppendLine($$"""
+        namespace Hazel.Runtime;
+        {
+            public unsafe struct BoundedString{{maximumLength}}
+            {
+                private fixed char _buffer[{{maximumLength}}];
+                private int _length;
+
+                public int Length =>
+                    _length;
+
+                public BoundedString{{maximumLength}}(
+                    string value)
+                {
+                    if (value.Length > {{maximumLength}})
+                    {
+                        throw new System.ArgumentException(
+                            "Bounded string exceeds maximum length.",
+                            nameof(value));
+                    }
+
+                    _length = value.Length;
+
+                    for (int i = 0; i < value.Length; i++)
+                    {
+                        _buffer[i] = value[i];
+                    }
+                }
+
+                public override string ToString()
+                {
+                    return new string(
+                        _buffer,
+                        0,
+                        _length);
+                }
+            }
+        }
+        """);
     }
 }
