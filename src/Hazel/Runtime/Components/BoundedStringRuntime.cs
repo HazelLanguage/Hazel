@@ -10,6 +10,7 @@ public sealed class BoundedStringRuntime
     : IRuntimeComponent
 {
     private readonly HashSet<int> _bounds = new();
+    private readonly HashSet<(int source, int target)> _conversions = new();
 
     public void RegisterRequirements(
         IrProgram program)
@@ -54,6 +55,18 @@ public sealed class BoundedStringRuntime
             case IrBoundedString bounded:
                 _bounds.Add(
                     bounded.MaximumLength);
+                break;
+
+            case IrBoundedStringConversion conversion:
+                _bounds.Add(conversion.TargetMaximumLength);
+                RegisterExpression(conversion.Value);
+
+                if (conversion.Value.Type is IrBoundedStringType sourceType)
+                {
+                    _conversions.Add(
+                        (sourceType.MaximumLength, 
+                         conversion.TargetMaximumLength));
+                }
                 break;
         }
     }
@@ -100,48 +113,79 @@ public sealed class BoundedStringRuntime
         }
     }
 
-    private static void EmitBoundedString(
-    StringBuilder builder,
-    int maximumLength)
+    private void EmitBoundedString(
+        StringBuilder builder,
+        int maximumLength)
     {
         builder.AppendLine($$"""
-        namespace Hazel.Runtime;
+namespace Hazel.Runtime
+{
+    public unsafe struct BoundedString{{maximumLength}}
+    {
+        private fixed char _buffer[{{maximumLength}}];
+        private int _length;
+
+        public int Length =>
+            _length;
+
+        public BoundedString{{maximumLength}}(
+            string value)
         {
-            public unsafe struct BoundedString{{maximumLength}}
+            if (value.Length > {{maximumLength}})
             {
-                private fixed char _buffer[{{maximumLength}}];
-                private int _length;
+                throw new System.ArgumentException(
+                    "Bounded string exceeds maximum length.",
+                    nameof(value));
+            }
 
-                public int Length =>
-                    _length;
+            _length = value.Length;
+            fixed (char* src = value)
+            fixed (char* dst = _buffer)
+            {
+                System.Buffer.MemoryCopy(src, dst, {{maximumLength}} * sizeof(char), value.Length * sizeof(char));
+            }
+        }
 
-                public BoundedString{{maximumLength}}(
-                    string value)
+""");
+
+        foreach (var (sourceSize, _) in _conversions.Where(c => c.target == maximumLength))
+        {
+            builder.AppendLine($$"""
+        public BoundedString{{maximumLength}}(
+            BoundedString{{sourceSize}} source)
+        {
+            _length = source.Length;
+            fixed (char* dst = _buffer)
+            {
+                var srcSpan = source.AsSpan();
+                fixed (char* src = srcSpan)
                 {
-                    if (value.Length > {{maximumLength}})
-                    {
-                        throw new System.ArgumentException(
-                            "Bounded string exceeds maximum length.",
-                            nameof(value));
-                    }
-
-                    _length = value.Length;
-
-                    for (int i = 0; i < value.Length; i++)
-                    {
-                        _buffer[i] = value[i];
-                    }
-                }
-
-                public override string ToString()
-                {
-                    return new string(
-                        _buffer,
-                        0,
-                        _length);
+                    System.Buffer.MemoryCopy(src, dst, {{maximumLength}} * sizeof(char), source.Length * sizeof(char));
                 }
             }
         }
-        """);
+
+""");
+        }
+
+        builder.AppendLine($$"""
+        public ReadOnlySpan<char> AsSpan()
+        {
+            fixed (char* ptr = _buffer)
+            {
+                return new ReadOnlySpan<char>(ptr, _length);
+            }
+        }
+
+        public override string ToString()
+        {
+            fixed (char* ptr = _buffer)
+            {
+                return new string(ptr, 0, _length);
+            }
+        }
+    }
+}
+""");
     }
 }

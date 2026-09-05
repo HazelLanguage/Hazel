@@ -43,9 +43,9 @@ namespace Hazel
             return sum;
         }
 
-        public string[32] ProcessUsername(string[32] rawInput)
+        public string[32] ProcessUsername(string[16] rawInput)
         {
-            variable string[32] cleanName = rawInput;
+            variable string[32] cleanName = (string[32])rawInput;
             return cleanName;
         }
     }
@@ -64,9 +64,44 @@ dotnet run --project src/Hazel -- ...
 ## 🔣 Core Semantics
 
 * Hazel Standard Library: The standard library wraps complex functionality in a simple, easy-to-use API.
-* Mandatory Access Modifiers: Every type, member, and definition requires an explicit access modifier.
 * Mandatory Variable Types: All variable assignments start with the `variable` keyword, and all variable types are required to be explicitly declared.
 * Explicitly Sized Integers: Integer and unsigned integer types must declare their exact bit size (e.g., `integer32`, `uinteger32`) rather than using a bare `integer` keyword.
+
+### Explicit Access Modifiers
+
+Every namespace, type, method, field, and property must explicitly declare access control.
+
+#### Base Modifiers
+
+Hazel provides four foundational access keywords:
+
+| Modifier | Access Scope |
+| :--- | :--- |
+| `public` | Unrestricted access across all referencing assemblies. |
+| `internal` | Restricted to the declaring assembly. |
+| `protected` | Restricted to the declaring class and derived types. |
+| `private` | Restricted strictly to the declaring type. |
+
+#### Combinations & Flexible Order
+
+Access modifiers can be combined to form composite scopes. Combining keywords works in any order (`protected internal` and `internal protected` are functionally identical):
+
+* **`protected internal`**: Accessible within the declaring assembly **OR** by derived types in other assemblies.
+* **`private protected`**: Accessible within the declaring class **AND** by derived types, but **ONLY** within the same assembly.
+
+```hazel
+// ❌ Compilation Error: Missing mandatory access modifier.
+class Calculator
+{
+    integer32 Add(integer32 a, integer32 b) { return a + b; }
+}
+
+// ✅ Correct: Explicitly declared access control modifier
+internal class Calculator
+{
+    private integer32 Add(integer32 a, integer32 b) { return a + b; }
+}
+```
 
 ### First-Class Bounded Strings
 
@@ -78,41 +113,31 @@ Bounded strings allocate their entire fixed capacity as a single, contiguous blo
 variable string[32] username = "Alice";
 ```
 
-Assignment safety is enforced based on buffer sizes. You can assign equal or smaller string types into larger ones, but assigning a larger buffer to a smaller one fails at compile time:
+#### Type Conversions
+
+Bounded strings of different lengths are distinct types. There is no implicit conversion between bounded string types, even when assigning a smaller bounded string to a larger bounded string.
+
+For instance, returning a `string[16]` from a method expecting a `string[32]` will trigger a compiler error:
 
 ```hazel
-// ✅ Equal source and destination types
-variable string[16] a = "abc";
-variable string[16] b = a;
-
-// ✅ Assigning a smaller buffer into a larger one
-variable string[16] a = "abc";
-variable string[32] b = a;
-
-// ❌ Cannot assign value of type 'string[32]' to variable 'b' of type 'string[16]'
-variable string[32] a = "abc";
-variable string[16] b = a;
-
-// ❌ Cannot assign value of type 'string' to variable 'b' of type 'string[64]'
-variable string a = "abc"; // unbounded string
-variable string[64] b = a;
+// ❌ Compilation Error: Cannot return value of type 'string[16]' from method returning 'string[32]'.
+public string[32] GetName(string[16] input)
+{
+    return input; 
+}
 ```
 
-The same safety rules apply to method return types and parameters:
+To convert between bounded string types, you must use an explicit cast:
 
 ```hazel
-// ✅ Returning a smaller buffer into a larger return type
-public string[64] ProcessUsername(string[32] rawInput)
+// ✅ Correct: Explicitly cast to the target bounded size
+public string[32] GetName(string[16] input)
 {
-    return rawInput;
-}
-
-// ❌ Cannot return value of type 'string[64]' from method returning 'string[32]'
-public string[32] ProcessUsername(string[64] rawInput)
-{
-    return rawInput;
+    return (string[32])input; 
 }
 ```
+
+Casting between bounded string types performs a direct, zero-allocation memory copy from the source buffer into the target buffer. Because bounded strings are stack-allocated value types, this operation copies raw memory blocks directly without instantiating heap objects or invoking string serialization routines.
 
 ## 🧩 Contributing
 

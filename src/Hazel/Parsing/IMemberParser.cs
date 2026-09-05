@@ -7,5 +7,10 @@ public interface IMemberParser
 {
     bool CanParse(Token token);
 
+    bool RequiresAccessModifier
+    {
+        get;
+    }
+
     Declaration Parse(Parser parser);
 }

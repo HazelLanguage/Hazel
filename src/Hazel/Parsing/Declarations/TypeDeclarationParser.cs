@@ -8,6 +8,8 @@ namespace Hazel.Parsing.Declarations;
 
 public sealed class TypeDeclarationParser : IDeclarationParser, IMemberParser
 {
+    public bool RequiresAccessModifier => false;
+
     private readonly MemberParserRegistry _memberRegistry;
 
     public TypeDeclarationParser(

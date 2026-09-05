@@ -23,6 +23,12 @@ public sealed class MemberParserRegistry
                 return memberParser.Parse(parser);
         }
 
+        if (_parsers.Any(p => p.RequiresAccessModifier))
+        {
+            throw new Exception(
+                "Missing mandatory access modifier.");
+        }
+
         throw new Exception(
             $"No member parser registered " +
             $"for {token.Kind}");

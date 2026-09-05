@@ -6,6 +6,8 @@ using Hazel.Syntax.Imports;
 
 public sealed class ImportDeclarationParser : IDeclarationParser
 {
+    public bool RequiresAccessModifier => false;
+
     public bool CanParse(Token token)
     {
         return token.Kind == TokenKind.Import;

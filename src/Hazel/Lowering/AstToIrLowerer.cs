@@ -11,6 +11,7 @@ using Hazel.Syntax.Expressions;
 using Hazel.Syntax.Imports;
 using Hazel.Syntax.Statements;
 using Hazel.Syntax.Types;
+using Microsoft.VisualBasic;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Hazel.Lowering;
@@ -205,6 +206,24 @@ public sealed class AstToIrLowerer
         return new IrVariable(
             node.Name,
             LowerValueType(node.ResolvedType));
+    }
+
+    public override IrNode VisitConversionExpression(
+        ConversionExpression node)
+    {
+        if (node.ResolvedType is not BoundedStringTypeSymbol targetType)
+        {
+            throw new InvalidOperationException(
+                "Conversion expression has not been " +
+                "semantically resolved as a bounded string.");
+        }
+
+        var value =
+            (IrExpression)node.Value.Accept(this);
+
+        return new IrBoundedStringConversion(
+            value,
+            targetType.MaximumLength);
     }
 
     public override IrNode VisitBinary(

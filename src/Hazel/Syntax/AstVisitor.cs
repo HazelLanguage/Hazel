@@ -27,7 +27,10 @@ public abstract class AstVisitor<T>
         Parameter node) => default!;
 
     public abstract T VisitNamedTypeReference(
-        NamedTypeReference node); 
+        NamedTypeReference node);
+
+    public abstract T VisitConversionExpression(
+        ConversionExpression expression);
 
     public abstract T VisitBoundedStringTypeReference(
         BoundedStringTypeReference node);

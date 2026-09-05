@@ -9,6 +9,8 @@ namespace Hazel.Parsing.Declarations;
 
 public sealed class MethodDeclarationParser : IMemberParser
 {
+    public bool RequiresAccessModifier => true;
+
     public bool CanParse(Token token)
     {
         return token.Kind.IsAccessModifier();

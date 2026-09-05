@@ -23,6 +23,12 @@ public sealed class DeclarationParserRegistry
                 return declarationParser.Parse(parser);
         }
 
+        if (_parsers.Any(p => p.RequiresAccessModifier))
+        {
+            throw new Exception(
+                "Missing mandatory access modifier.");
+        }
+
         throw new Exception(
             $"No declaration parser registered " +
             $"for {token.Kind}");

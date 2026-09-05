@@ -276,6 +276,11 @@ public sealed class CSharpGenerator
                 $"{boundedString.MaximumLength}(" +
                 $"{EmitStringLiteral(boundedString.Value)})",
 
+            IrBoundedStringConversion conversion =>
+                $"new Hazel.Runtime.BoundedString" +
+                $"{conversion.TargetMaximumLength}(" +
+                $"{EmitExpression(conversion.Value)})",
+
             _ => throw new Exception(
                 $"Unknown IR expression: " +
                 expression.GetType().Name)

@@ -7,6 +7,8 @@ namespace Hazel.Parsing.Declarations;
 public sealed class NamespaceDeclarationParser
     : IDeclarationParser
 {
+    public bool RequiresAccessModifier => false;
+
     private readonly DeclarationParserRegistry _registry;
 
     public NamespaceDeclarationParser(

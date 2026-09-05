@@ -18,7 +18,7 @@ public sealed class SemanticAnalyzer
     TypeSymbol destination)
     {
         // Exact same type.
-        if (source == destination)
+        if (source.Equals(destination))
             return true;
 
         // bounded string -> string
@@ -29,15 +29,8 @@ public sealed class SemanticAnalyzer
         }
 
         // bounded string[N] -> bounded string[M]
-        //
-        // A string with a maximum length of N can safely fit into
-        // one with a maximum length of M when N <= M.
-        if (source is BoundedStringTypeSymbol sourceBounded &&
-            destination is BoundedStringTypeSymbol destinationBounded)
-        {
-            return sourceBounded.MaximumLength <=
-                   destinationBounded.MaximumLength;
-        }
+        // These conversions must now be explicit using (type)value syntax
+        // No implicit conversions allowed (neither widening nor narrowing)
 
         return false;
     }
@@ -242,6 +235,60 @@ public sealed class SemanticAnalyzer
         node.ResolvedType = symbol.Type;
 
         return symbol.Type;
+    }
+
+    public override TypeSymbol VisitConversionExpression(
+        ConversionExpression node)
+    {
+        // Resolve the target type
+        TypeSymbol targetType = node.TargetType.Accept(this);
+
+        // Resolve the source value type
+        TypeSymbol sourceType = node.Value.Accept(this);
+
+        // Validate that the conversion is allowed
+        // For explicit conversions with (type)value syntax:
+        // 1. bounded string[N] to bounded string[M] - always allowed (explicit)
+        // 2. bounded string to string - allowed (explicit)
+        // 3. string to bounded string[N] - allowed only if source is string literal that fits
+
+        if (targetType is BoundedStringTypeSymbol targetBounded &&
+            sourceType is BoundedStringTypeSymbol sourceBounded)
+        {
+            // bounded string[N] to bounded string[M]
+            // This is always allowed with explicit cast syntax
+            node.ResolvedType = targetBounded;
+            return targetBounded;
+        }
+
+        if (targetType == BuiltinTypes.String &&
+            sourceType is BoundedStringTypeSymbol)
+        {
+            // bounded string to string - allowed
+            node.ResolvedType = targetType;
+            return targetType;
+        }
+
+        if (targetType is BoundedStringTypeSymbol targetBoundedStr &&
+            sourceType == BuiltinTypes.String &&
+            node.Value is StringExpression stringExpression)
+        {
+            // string literal to bounded string - check if it fits
+            if (stringExpression.Value.Length <= targetBoundedStr.MaximumLength)
+            {
+                node.ResolvedType = targetBoundedStr;
+                return targetBoundedStr;
+            }
+
+            throw new Exception(
+                $"String literal is {stringExpression.Value.Length} " +
+                $"characters long, but target type has a maximum " +
+                $"length of {targetBoundedStr.MaximumLength}.");
+        }
+
+        throw new Exception(
+            $"Cannot convert from '{sourceType.Name}' to " +
+            $"'{targetType.Name}' using explicit cast syntax.");
     }
 
     private static bool IsIntegerType(TypeSymbol type)

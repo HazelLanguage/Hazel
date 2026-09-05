@@ -11,7 +11,7 @@ class Program
         {
             Console.WriteLine("Usage:");
             Console.WriteLine("  hazel <path-to-file>");
-            Console.WriteLine("  hazel -c \"var h = 8;\"");
+            Console.WriteLine("  hazel -c \"variable integer32 h = 8;\"");
             return;
         }
 
