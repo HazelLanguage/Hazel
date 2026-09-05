@@ -3,12 +3,14 @@ using Hazel.IR;
 using Hazel.IR.Expressions;
 using Hazel.IR.Statements;
 using Hazel.IR.Types;
+using Hazel.Runtime.Exceptions;
 
 namespace Hazel.Runtime.Components;
 
 public sealed class BoundedStringRuntime
     : IRuntimeComponent
 {
+    private bool _requiresConversionException;
     private readonly HashSet<int> _bounds = new();
     private readonly HashSet<(int source, int target)> _conversions = new();
 
@@ -34,6 +36,14 @@ public sealed class BoundedStringRuntime
                     }
                 }
             }
+        }
+    }
+
+    public IEnumerable<IRuntimeException> GetRequiredExceptions()
+    {
+        if (_requiresConversionException)
+        {
+            yield return new BoundedStringOverflowException();
         }
     }
 
@@ -63,10 +73,21 @@ public sealed class BoundedStringRuntime
 
                 if (conversion.Value.Type is IrBoundedStringType sourceType)
                 {
+                    int sourceSize =
+                        sourceType.MaximumLength;
+
+                    int targetSize =
+                        conversion.TargetMaximumLength;
+
                     _conversions.Add(
-                        (sourceType.MaximumLength, 
-                         conversion.TargetMaximumLength));
+                        (sourceSize, targetSize));
+
+                    if (sourceSize > targetSize)
+                    {
+                        _requiresConversionException = true;
+                    }
                 }
+
                 break;
         }
     }
@@ -151,21 +172,42 @@ namespace Hazel.Runtime
         foreach (var (sourceSize, _) in _conversions.Where(c => c.target == maximumLength))
         {
             builder.AppendLine($$"""
-        public BoundedString{{maximumLength}}(
-            BoundedString{{sourceSize}} source)
-        {
-            _length = source.Length;
-            fixed (char* dst = _buffer)
-            {
-                var srcSpan = source.AsSpan();
-                fixed (char* src = srcSpan)
-                {
-                    System.Buffer.MemoryCopy(src, dst, {{maximumLength}} * sizeof(char), source.Length * sizeof(char));
-                }
-            }
-        }
+                    public BoundedString{{maximumLength}}(
+                        BoundedString{{sourceSize}} source)
+                    {
+            """);
 
-""");
+            if (sourceSize > maximumLength)
+            {
+                builder.AppendLine($$"""
+                            if (source.Length > {{maximumLength}})
+                            {
+                                throw new Hazel.Runtime.Exceptions.BoundedStringOverflowException(
+                                    source.Length,
+                                    {{maximumLength}});
+                            }
+
+                """);
+            }
+
+            builder.AppendLine($$"""
+                    _length = source.Length;
+
+                    fixed (char* dst = _buffer)
+                    {
+                        var srcSpan = source.AsSpan();
+                        fixed (char* src = srcSpan)
+                        {
+                            System.Buffer.MemoryCopy(
+                                src,
+                                dst,
+                                {{maximumLength}} * sizeof(char),
+                                source.Length * sizeof(char));
+                        }
+                    }
+                }
+
+        """);
         }
 
         builder.AppendLine($$"""

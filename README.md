@@ -105,12 +105,21 @@ internal class Calculator
 
 ### First-Class Bounded Strings
 
-Strings can carry explicit length constraints as part of their type. These constraints are checked statically whenever possible for safety, and seamlessly deferred to runtime when values are dynamic, giving the best of both static guarantees and runtime flexibility compared to standard C# strings. A variable of type `string` without square brackets is considered unbounded, while a variable of type `string[n]` is considered bounded to a maximum of `n` characters.
+Strings can carry explicit length constraints as part of their type. These constraints are checked statically whenever possible for safety, and deferred to runtime when values are dynamic, giving both static guarantees and runtime flexibility compared to standard C# strings. A variable of type `string` without square brackets is considered unbounded, while a variable of type `string[n]` is considered bounded to a maximum of `n` characters.
 
 Bounded strings allocate their entire fixed capacity as a single, contiguous block of memory which live directly on the call stack when declared locally, or inline when embedded within other structures, classes, or arrays. For example, rather than pointing to a separate managed heap allocation, a `string[32]` reserves its full 32-character buffer upfront (64 bytes for the buffer plus 4 bytes for the length).
 
 ```hazel
 variable string[32] username = "Alice";
+```
+
+#### Compile-Time Validation
+
+String literals assigned to bounded strings are checked statically during compilation. If a string literal exceeds the target variable's maximum capacity, the compiler generates a static error:
+
+```hazel
+// ❌ Compilation Error: String literal is 41 characters long, but 'foo' has a maximum length of 32.
+variable string[32] foo = "This string exceeds thirty-two characters";
 ```
 
 #### Type Conversions
@@ -135,6 +144,15 @@ public string[32] GetName(string[16] input)
 {
     return (string[32])input; 
 }
+```
+
+When casting between bounded string types, widening conversions (e.g., `string[16]` to `string[32]`) are always safe. However, attempting to narrow a string when the source string's actual length exceeds the target capacity will throw a `BoundedStringOverflowException` at runtime:
+
+```hazel
+variable string[64] longName = "This string exceeds thirty-two characters";
+
+// ❌ Runtime Error: Hazel.Runtime.Exceptions.BoundedStringOverflowException: Cannot convert bounded string of length 41 to a bounded string with maximum length 32.
+variable string[32] shortName = (string[32])longName;
 ```
 
 Casting between bounded string types performs a direct, zero-allocation memory copy from the source buffer into the target buffer. Because bounded strings are stack-allocated value types, this operation copies raw memory blocks directly without instantiating heap objects or invoking string serialization routines.

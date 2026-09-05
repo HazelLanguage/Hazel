@@ -6,6 +6,7 @@ using Hazel.IR.Statements;
 using Hazel.IR.Types;
 using Hazel.Runtime;
 using Hazel.Runtime.Components;
+using Hazel.Runtime.Exceptions;
 using Hazel.StandardLibrary;
 using Hazel.Syntax.Declarations;
 
@@ -33,6 +34,11 @@ public sealed class CSharpGenerator
         }
 
         var builder = new StringBuilder();
+
+        foreach (IRuntimeException exception in _runtime.Exceptions)
+        {
+            exception.EmitCSharpRuntime(builder);
+        }
 
         foreach (IRuntimeComponent component in _runtime.Components)
         {
