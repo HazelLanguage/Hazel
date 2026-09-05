@@ -65,7 +65,39 @@ dotnet run --project src/Hazel -- ...
 
 * Hazel Standard Library: The standard library wraps complex functionality in a simple, easy-to-use API.
 * Mandatory Variable Types: All variable assignments start with the `variable` keyword, and all variable types are required to be explicitly declared.
-* Explicitly Sized Integers: Integer and unsigned integer types must declare their exact bit size (e.g., `integer32`, `uinteger32`) rather than using a bare `integer` keyword.
+
+### Explicitly Sized Integers
+
+Integer and unsigned integer types must explicitly declare their exact bit size rather than using a generic integer keyword. Hazel provides signed and unsigned variants across five fixed bit widths:
+
+| Signed Type | Unsigned Type | Bit Width | Signed Range                    | Unsigned Range     | Count         |
+| :---------- | :------------ | :-------- | :------------------------------ | :----------------- | :------------ |
+| integer8    | uinteger8     | 8-bit     | -128 to 127                     | 0 to 255           | 256           |
+| integer16   | uinteger16    | 16-bit    | -32,768 to 32,767               | 0 to 65,535        | 65,536        |
+| integer32   | uinteger32    | 32-bit    | -2,147,483,648 to 2,147,483,647 | 0 to 4,294,967,295 | 4,294,967,296 |
+| integer64   | uinteger64    | 64-bit    | -2⁶³ to 2⁶³ - 1                 | 0 to 2⁶⁴ - 1       | 2⁶⁴           |
+| integer128  | uinteger128   | 128-bit   | -2¹²⁷ to 2¹²⁷ - 1               | 0 to 2¹²⁸ - 1      | 2¹²⁸          |
+
+### Namespace Reservation Rules
+
+To avoid conflicts with the Hazel engine, the `Hazel.Runtime` namespace root and all sub-namespaces (such as `Hazel.Runtime.Foo` or `Hazel.Runtime.Exceptions`) are strictly reserved for the Hazel runtime.
+
+Declaring user types or namespaces inside `Hazel.Runtime` or any child namespace will trigger a compilation error:
+
+```hazel
+// ❌ Compilation Error: Namespace 'Hazel.Runtime.Foo' is reserved for the Hazel runtime.
+namespace Hazel.Runtime.Foo
+{
+    public class CustomHandler { }
+}
+```
+
+#### Allowed Variations
+
+Namespaces that merely start with "Hazel.Runtime" without matching the reserved root segment or being sub-namespaces of the reserved root are completely valid:
+
+* Reserved: `Hazel.Runtime`, `Hazel.Runtime.*` (e.g., `Hazel.Runtime.Exceptions`, `Hazel.Runtime.Collections`)
+* Allowed: `Hazel.RuntimeExtensions`, `Hazel.MyProgram`, `Hazel.RuntimeHelpers.App`
 
 ### Explicit Access Modifiers
 

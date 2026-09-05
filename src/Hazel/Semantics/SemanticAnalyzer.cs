@@ -12,10 +12,18 @@ public sealed class SemanticAnalyzer
 {
     private Scope _scope = new();
     private TypeSymbol? _currentReturnType;
+    private static bool IsReservedNamespace(
+        string name)
+    {
+        return name == "Hazel.Runtime" ||
+               name.StartsWith(
+                   "Hazel.Runtime.",
+                   StringComparison.Ordinal);
+    }
 
     private static bool AreAssignable(
-    TypeSymbol source,
-    TypeSymbol destination)
+        TypeSymbol source,
+        TypeSymbol destination)
     {
         // Exact same type.
         if (source.Equals(destination))
@@ -36,15 +44,15 @@ public sealed class SemanticAnalyzer
     }
 
     private static bool IsStringLiteralWithinBounds(
-    StringExpression expression,
-    BoundedStringTypeSymbol destination)
+        StringExpression expression,
+        BoundedStringTypeSymbol destination)
     {
         return expression.Value.Length <=
                destination.MaximumLength;
     }
 
     public void Analyze(
-    CompilationUnit compilationUnit)
+        CompilationUnit compilationUnit)
     {
         compilationUnit.Accept(this);
     }
@@ -63,6 +71,12 @@ public sealed class SemanticAnalyzer
     public override TypeSymbol VisitNamespace(
         NamespaceDeclaration node)
     {
+        if (IsReservedNamespace(node.Name))
+        {
+            throw new Exception(
+                $"Namespace '{node.Name}' is reserved for the Hazel runtime.");
+        }
+
         foreach (var member in node.Members)
         {
             member.Accept(this);

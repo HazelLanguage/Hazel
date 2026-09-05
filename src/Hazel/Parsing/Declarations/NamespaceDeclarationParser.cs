@@ -27,8 +27,21 @@ public sealed class NamespaceDeclarationParser
         Token namespaceToken =
             parser.Consume(TokenKind.Namespace);
 
-        Token name =
-            parser.Consume(TokenKind.Identifier);
+        var parts = new List<string>
+    {
+        parser.Consume(TokenKind.Identifier).Text
+    };
+
+        while (parser.Check(TokenKind.Dot))
+        {
+            parser.Consume(TokenKind.Dot);
+
+            parts.Add(
+                parser.Consume(TokenKind.Identifier).Text);
+        }
+
+        string name =
+            string.Join(".", parts);
 
         parser.Consume(TokenKind.LeftBrace);
 
@@ -45,7 +58,7 @@ public sealed class NamespaceDeclarationParser
             parser.Consume(TokenKind.RightBrace);
 
         return new NamespaceDeclaration(
-            name.Text,
+            name,
             members,
             SourceSpan.FromBounds(
                 namespaceToken.Span.Start,
