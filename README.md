@@ -61,10 +61,18 @@ If you are actively contributing to the compiler or want to test local source ch
 dotnet run --project src/Hazel -- ...
 ```
 
+## 📐 Naming Conventions
+
+Hazel follows standard .NET naming conventions:
+
+* **PascalCase**: Namespaces, types (classes, structs), methods, and properties.
+* **camelCase**: Local variables, parameters, and private fields.
+
 ## 🔣 Core Semantics
 
 * Hazel Standard Library: The standard library wraps complex functionality in a simple, easy-to-use API.
-* Mandatory Variable Types: All variable assignments start with the `variable` keyword, and all variable types are required to be explicitly declared.
+* Explicit Variable Types: All variable assignments start with the `variable` keyword, and all variable types are required to be explicitly declared.
+* UTF-16 String Encoding: Strings in Hazel are UTF-16 encoded for zero-overhead interoperability with the .NET CoreCLR.
 
 ### Explicitly Sized Integers
 

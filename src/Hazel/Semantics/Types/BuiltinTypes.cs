@@ -26,8 +26,8 @@ public static class BuiltinTypes
     public static readonly TypeSymbol UnsignedInteger16 =
         new BuiltinTypeSymbol("uinteger16", 16, false);
 
-    public static readonly BuiltinTypeSymbol Integer32 =
-        new("integer32", 32, true);
+    public static readonly TypeSymbol Integer32 =
+        new BuiltinTypeSymbol("integer32", 32, true);
 
     public static readonly TypeSymbol UnsignedInteger32 =
         new BuiltinTypeSymbol("uinteger32", 32, false);
