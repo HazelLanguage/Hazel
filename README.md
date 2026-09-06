@@ -4,6 +4,14 @@
 
 A modern, high performance programming language designed for building scalable, highly type-safe, and enterprise-grade applications.
 
+## 🌰 The Philosophy of Hazel
+
+Hazel is built on three core engineering principles:
+
+1. **Explicit Intent over Hidden Coercion**: Intent should be explicitly declared. Avoiding implicit type conversions, implicit variable inference, or implicit access control ensures clarity and predictability in code behavior.
+2. **Readability over Conciseness**: Code is read far more times than it is written. Syntax should be clear and expressive, making codebases easier to audit and maintain, even if it requires more verbosity.
+3. **Strict Type Safety over Runtime Flexibility**: Catching bugs at compile time eliminates entire classes of runtime errors. Strict type safety leads to robust systems where code behaves as expected.
+
 ## 📦 Installation
 
 Install the compiler and CLI tool from NuGet:
