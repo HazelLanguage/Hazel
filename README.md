@@ -228,7 +228,5 @@ The Hazel compiler is open-source and licensed under the [MPL-2.0 License](LICEN
 
 ---
 
-<div align="center">
-  <p>Copyright © 2026 Hazel Foundation</p>
-  <p>🌰</p>
-</div>
+Copyright © 2026 Hazel Foundation  
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀🌰

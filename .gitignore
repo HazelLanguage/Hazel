@@ -434,3 +434,6 @@ FodyWeavers.xsd
 # This is currently just a catch-all to avoid random Hazel files
 # being committed to the repository
 *.hz
+
+# Conventional changelog
+CHANGELOG.md
