@@ -31,20 +31,25 @@ Download syntax highlighting for Visual Studio from the [Visual Studio Marketpla
 
 ## 📖 Usage
 
-File/Directory:
+### File/Directory
 
 ```powershell
 hazel Program.hz
 ```
 
-Inline:
+### Inline
 
 ```powershell
 hazel -c "
 namespace Hazel
 {
-    internal sealed class Calculator
+    internal sealed class Program
     {
+        internal static void Main()
+        {
+            print \`"Hello, Hazel!\`";
+        }
+
         private protected integer32 Add(integer32 a, integer32 b)
         {
             variable integer32 sum = a + b;
@@ -59,6 +64,14 @@ namespace Hazel
     }
 }
 "
+```
+
+### Transpiling
+
+By default, Hazel compiles and executes the generated program. Use `-t` or `--transpile` to output the generated C# source to stdout without executing:
+
+```powershell
+hazel Program.hz -t
 ```
 
 ### ⚙️ Development

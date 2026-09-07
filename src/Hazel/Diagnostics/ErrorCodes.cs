@@ -42,6 +42,7 @@ public static class ErrorCodes
     // Semantic / Type errors (HZ3001 - HZ4999)
     public const string ReservedNamespace = "HZ3001";
     public const string InvalidTypeModifier = "HZ3002";
+    public const string PrintTypeNotSupported = "HZ3003";
 
     // Intermediate Representation errors (HZ5001 - HZ5999)
 

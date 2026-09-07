@@ -120,6 +120,7 @@ public sealed class AstToIrLowerer
         {
             var irMethod = new IrMethod(
                 node.AccessModifiers,
+                node.MethodModifiers,
                 node.Name,
                 returnType);
 
@@ -252,7 +253,7 @@ public sealed class AstToIrLowerer
     }
 
     public override IrNode VisitVariable(
-    VariableStatement node)
+        VariableStatement node)
     {
         var type =
             (IrTypeReference)node.Type.Accept(this);
@@ -269,9 +270,19 @@ public sealed class AstToIrLowerer
     }
 
     public override IrNode VisitString(
-    StringExpression node)
+        StringExpression node)
     {
         return new IrString(node.Value);
+    }
+
+    public override IrNode VisitPrint(
+        PrintStatement node)
+    {
+        var expression =
+            (IrExpression)node.Expression.Accept(this);
+
+        return new IrPrintStatement(
+            expression);
     }
 
     public override IrNode VisitExpressionStatement(
@@ -285,7 +296,7 @@ public sealed class AstToIrLowerer
     }
 
     public override IrNode VisitReturn(
-    ReturnStatement node)
+        ReturnStatement node)
     {
         IrExpression? expression = null;
 
@@ -302,7 +313,7 @@ public sealed class AstToIrLowerer
     }
 
     public override IrNode VisitNamedTypeReference(
-    NamedTypeReference node)
+        NamedTypeReference node)
     {
         return new IrNamedType(node.Name);
     }

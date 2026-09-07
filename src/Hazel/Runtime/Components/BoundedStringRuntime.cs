@@ -102,6 +102,10 @@ public sealed class BoundedStringRuntime
                 RegisterExpression(variable.Value);
                 break;
 
+            case IrPrintStatement print:
+                RegisterExpression(print.Expression);
+                break;
+
             case IrExpressionStatement expression:
                 RegisterExpression(
                     expression.Expression);

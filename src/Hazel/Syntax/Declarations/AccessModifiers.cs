@@ -51,6 +51,7 @@ public static class AccessModifiersExtensions
     {
         return modifiers switch
         {
+            AccessModifiers.None => true,
             AccessModifiers.Public => true,
             AccessModifiers.Private => true,
             AccessModifiers.Protected => true,
@@ -71,6 +72,8 @@ public static class AccessModifiersExtensions
     {
         return modifiers switch
         {
+            AccessModifiers.None => string.Empty,
+
             AccessModifiers.Public =>
                 "public",
 

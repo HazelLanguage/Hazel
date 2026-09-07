@@ -14,6 +14,7 @@ public enum TokenKind
     Internal,
     Sealed,
     Abstract,
+    Static,
 
     Namespace,
     Import,
@@ -25,6 +26,7 @@ public enum TokenKind
     Var,
     String,
     Return,
+    Print,
 
     Plus,
     Minus,

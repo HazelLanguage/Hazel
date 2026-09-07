@@ -55,4 +55,7 @@ public abstract class AstVisitor<T>
 
     public virtual T VisitExpressionStatement(
         ExpressionStatement node) => default!;
+
+    public virtual T VisitPrint(
+        PrintStatement node) => default!;
 }

@@ -1,3 +1,4 @@
+using Hazel.Diagnostics;
 using Hazel.Semantics.Types;
 using Hazel.Syntax;
 using Hazel.Syntax.Declarations;
@@ -19,6 +20,22 @@ public sealed class SemanticAnalyzer
                name.StartsWith(
                    "Hazel.Runtime.",
                    StringComparison.Ordinal);
+    }
+
+    private static bool IsPrintableType(
+        TypeSymbol type)
+    {
+        if (type == BuiltinTypes.String)
+            return true;
+
+        if (type is BoundedStringTypeSymbol)
+            return true;
+
+        return type is BuiltinTypeSymbol
+        {
+            BitWidth: not null,
+            IsSigned: not null
+        };
     }
 
     private static bool AreAssignable(
@@ -400,6 +417,22 @@ public sealed class SemanticAnalyzer
             BuiltinTypes.String;
 
         return node.ResolvedType;
+    }
+
+    public override TypeSymbol VisitPrint(
+        PrintStatement node)
+    {
+        TypeSymbol expressionType =
+            node.Expression.Accept(this);
+
+        if (!IsPrintableType(expressionType))
+        {
+            throw new Exception(
+                $"[{ErrorCodes.PrintTypeNotSupported}] " +
+                $"Cannot print value of type '{expressionType.Name}'.");
+        }
+
+        return BuiltinTypes.Void;
     }
 
     public override TypeSymbol VisitExpressionStatement(

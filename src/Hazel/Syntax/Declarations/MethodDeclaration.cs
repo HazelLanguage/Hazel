@@ -10,6 +10,10 @@ public sealed class MethodDeclaration : Declaration
     {
         get;
     }
+    public MethodModifiers MethodModifiers
+    {
+        get;
+    }
     public TypeReference ReturnType
     {
         get;
@@ -29,6 +33,7 @@ public sealed class MethodDeclaration : Declaration
 
     public MethodDeclaration(
         AccessModifiers accessModifiers,
+        MethodModifiers methodModifiers,
         TypeReference returnType,
         string name,
         IReadOnlyList<Parameter> parameters,
@@ -37,6 +42,7 @@ public sealed class MethodDeclaration : Declaration
         : base(span)
     {
         AccessModifiers = accessModifiers;
+        MethodModifiers = methodModifiers;
         ReturnType = returnType;
         Name = name;
         Parameters = parameters;

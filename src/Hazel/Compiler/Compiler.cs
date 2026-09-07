@@ -27,6 +27,9 @@ public sealed class Compiler
             new VariableStatementParser());
 
         statementRegistry.Register(
+            new PrintStatementParser());
+
+        statementRegistry.Register(
             new ExpressionStatementParser());
 
         statementRegistry.Register(

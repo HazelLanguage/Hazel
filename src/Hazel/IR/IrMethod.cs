@@ -10,6 +10,11 @@ public sealed class IrMethod : IrNode
         get;
     }
 
+    public MethodModifiers MethodModifiers
+    {
+        get;
+    }
+
     public string Name
     {
         get;
@@ -32,10 +37,12 @@ public sealed class IrMethod : IrNode
 
     public IrMethod(
         AccessModifiers accessModifiers,
+        MethodModifiers methodModifiers,
         string name,
         IrTypeReference returnType)
     {
         AccessModifiers = accessModifiers;
+        MethodModifiers = methodModifiers;
         Name = name;
         ReturnType = returnType;
     }

@@ -20,8 +20,28 @@ public sealed class MethodDeclarationParser : IMemberParser
     {
         Token modifierToken = parser.Peek();
 
-        AccessModifiers accessModifiers =
-            parser.ConsumeAccessModifiers();
+        AccessModifiers accessModifiers = AccessModifiers.None;
+        MethodModifiers methodModifiers = MethodModifiers.None;
+
+        while (parser.Check(TokenKind.Static) ||
+               parser.Peek().Kind.IsAccessModifier())
+        {
+            if (parser.Check(TokenKind.Static))
+            {
+                parser.Advance();
+                methodModifiers |= MethodModifiers.Static;
+            }
+            else
+            {
+                Token modifier = parser.Advance();
+                accessModifiers |= modifier.Kind.ToAccessModifier();
+            }
+        }
+
+        if (!accessModifiers.IsValid())
+        {
+            throw new Exception("Invalid combination of access modifiers.");
+        }
 
         TypeReference returnType =
             parser.ConsumeTypeReference();
@@ -74,6 +94,7 @@ public sealed class MethodDeclarationParser : IMemberParser
 
         return new MethodDeclaration(
             accessModifiers,
+            methodModifiers,
             returnType,
             name.Text,
             parameters,

@@ -35,6 +35,8 @@ public sealed class CSharpGenerator
 
         var builder = new StringBuilder();
 
+        builder.AppendLine("using System;");
+
         foreach (IRuntimeException exception in _runtime.Exceptions)
         {
             exception.EmitCSharpRuntime(builder);
@@ -102,7 +104,19 @@ public sealed class CSharpGenerator
 
                     builder.Append("        ");
                     builder.Append(method.AccessModifiers.ToKeyword());
-                    builder.Append(" ");
+
+                    if (!string.IsNullOrEmpty(method.AccessModifiers.ToKeyword()))
+                    {
+                        builder.Append(" ");
+                    }
+
+                    string methodModifierKeyword = method.MethodModifiers.ToKeyword();
+                    if (!string.IsNullOrEmpty(methodModifierKeyword))
+                    {
+                        builder.Append(methodModifierKeyword);
+                        builder.Append(" ");
+                    }
+
                     builder.Append(
                         EmitType(method.ReturnType));
                     builder.Append(" ");
@@ -185,6 +199,15 @@ public sealed class CSharpGenerator
                         EmitExpression(variable.Value));
                 }
                 builder.AppendLine(";");
+
+                break;
+
+            case IrPrintStatement printStatement:
+
+                builder.Append("            ");
+                builder.Append("System.Console.Write(");
+                builder.Append(EmitExpression(printStatement.Expression));
+                builder.AppendLine(");");
 
                 break;
 

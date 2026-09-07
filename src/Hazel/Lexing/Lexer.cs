@@ -1,3 +1,4 @@
+using System.Text;
 using Hazel.Diagnostics;
 
 namespace Hazel.Lexing;
@@ -192,6 +193,7 @@ public sealed class Lexer
             "protected" => TokenKind.Protected,
             "internal" => TokenKind.Internal,
             "sealed" => TokenKind.Sealed,
+            "static" => TokenKind.Static,
 
             "namespace" => TokenKind.Namespace,
             "import" => TokenKind.Import,
@@ -201,6 +203,7 @@ public sealed class Lexer
             "record" => TokenKind.Record,
 
             "return" => TokenKind.Return,
+            "print" => TokenKind.Print,
 
             _ => TokenKind.Identifier
         };
@@ -239,13 +242,43 @@ public sealed class Lexer
     }
 
     private Token ReadString(
-    int start,
-    int line,
-    int column)
+        int start,
+        int line,
+        int column)
     {
+        // Opening quote has already been consumed by ReadToken().
+        var value = new StringBuilder();
+
         while (!IsAtEnd() && Peek() != '"')
         {
-            Advance();
+            char c = Advance();
+
+            if (c != '\\')
+            {
+                value.Append(c);
+                continue;
+            }
+
+            if (IsAtEnd())
+            {
+                throw new Exception(
+                    $"Unterminated escape sequence at {line}:{column}");
+            }
+
+            char escape = Advance();
+
+            value.Append(escape switch
+            {
+                'n' => '\n',
+                'r' => '\r',
+                't' => '\t',
+                '\\' => '\\',
+                '"' => '"',
+
+                _ => throw new Exception(
+                    $"Unknown escape sequence '\\{escape}' " +
+                    $"at {line}:{column}")
+            });
         }
 
         if (IsAtEnd())
@@ -254,14 +287,12 @@ public sealed class Lexer
                 $"Unterminated string literal at {line}:{column}");
         }
 
-        // Consume closing quote
+        // Consume closing quote.
         Advance();
-
-        string text = _source[start.._position];
 
         return new Token(
             TokenKind.StringLiteral,
-            text,
+            value.ToString(),
             new SourceSpan(
                 start,
                 _position - start),

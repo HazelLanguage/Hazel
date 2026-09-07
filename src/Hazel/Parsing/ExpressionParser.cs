@@ -60,10 +60,8 @@ public sealed class ExpressionParser
 
         if (Match(TokenKind.StringLiteral, out var stringLiteral))
         {
-            string value = stringLiteral.Text[1..^1];
-
             return new StringExpression(
-                value,
+                stringLiteral.Text,
                 stringLiteral.Span);
         }
 
