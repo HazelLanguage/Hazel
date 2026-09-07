@@ -1,0 +1,141 @@
+name: Publish to NuGet
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Tag for the release (e.g., v1.0.0)"
+        required: true
+        type: string
+      release_name:
+        description: "Name of the release (defaults to the tag)"
+        required: false
+        type: string
+      prerelease:
+        description: "Is this a prerelease?"
+        required: false
+        default: true
+        type: boolean
+      dry_run:
+        description: "Build everything but do not publish"
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  validate-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      clean_tag: ${{ steps.check-tag.outputs.clean_tag }}
+      version: ${{ steps.check-tag.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Validate tag
+        id: check-tag
+        run: |
+          INPUT_TAG="${{ inputs.tag_name }}"
+
+          VERSION="${INPUT_TAG#[vV]}"
+          CLEAN_TAG="v$VERSION"
+
+          if ! [[ "$CLEAN_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-([0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*))?(\+([0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*))?$ ]]; then
+            echo "::error::Invalid tag format: $CLEAN_TAG"
+            exit 1
+          fi
+
+          TAG_EXISTS=$(git tag -l "$CLEAN_TAG")
+          if [ -n "$TAG_EXISTS" ]; then
+            echo "::error::Tag $CLEAN_TAG already exists."
+            exit 1
+          fi
+
+          echo "Tag $CLEAN_TAG is valid"
+
+          echo "clean_tag=$CLEAN_TAG" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+  publish:
+    needs: validate-tag
+    runs-on: ubuntu-latest
+    
+    permissions:
+      id-token: write
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Update Version in Hazel.csproj
+        shell: pwsh
+        run: |
+          $csprojPath = "src/Hazel/Hazel.csproj"
+          $newVersion = "${{ needs.validate-tag.outputs.version }}"
+
+          [xml]$xml = Get-Content -Path $csprojPath
+          
+          $versionNode = $xml.SelectSingleNode("//PropertyGroup/Version")
+          if ($null -eq $versionNode) {
+              $propertyGroup = $xml.SelectSingleNode("//PropertyGroup")
+              $versionNode = $xml.CreateElement("Version")
+              $propertyGroup.AppendChild($versionNode) | Out-Null
+          }
+          
+          $versionNode.InnerText = $newVersion
+          $xml.Save($csprojPath)
+          
+          Write-Host "Updated $csprojPath Version to $newVersion"
+
+      - name: Build project
+        run: dotnet build src/Hazel/Hazel.csproj -c Release
+
+      - name: Pack NuGet package
+        run: dotnet pack src/Hazel/Hazel.csproj -c Release --no-build -o ./artifacts
+
+      - name: Generate Conventional Commit Notes
+        env:
+          RELEASE_VERSION: ${{ needs.validate-tag.outputs.version }}
+        run: npx conventional-changelog-cli@^5.0.0 -n changelog.config.js -i CHANGELOG.md -s -r 1
+
+      - name: NuGet login
+        if: ${{ !inputs.dry_run }}
+        uses: NuGet/login@v1
+        id: nuget-login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Publish to NuGet
+        if: ${{ !inputs.dry_run }}
+        run: |
+          dotnet nuget push ./artifacts/*.nupkg \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}"
+
+      - name: Create Git Tag and GitHub Release
+        if: ${{ inputs.dry_run == false }}
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.validate-tag.outputs.clean_tag }}
+          name: ${{ inputs.release_name != '' && inputs.release_name || needs.validate-tag.outputs.clean_tag }}
+          body_path: CHANGELOG.md
+          prerelease: ${{ inputs.prerelease }}
+          files: ./artifacts/*.nupkg
+
+      - name: Upload Workflow Artifacts (Dry Run)
+        if: ${{ inputs.dry_run == true }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: nuget-package-${{ needs.validate-tag.outputs.clean_tag }}
+          path: |
+            ./artifacts/*.nupkg
+            CHANGELOG.md
+          retention-days: 7
