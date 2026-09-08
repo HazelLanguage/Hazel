@@ -77,6 +77,8 @@ public sealed class Parser
     // Tokens
     // ─────────────────────────────────────────────
 
+    public int Position => _position;
+
     public Token Peek()
     {
         return _tokens[_position];

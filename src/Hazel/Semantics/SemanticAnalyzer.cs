@@ -1,4 +1,6 @@
+using System.Numerics;
 using Hazel.Diagnostics;
+using Hazel.IR.Types;
 using Hazel.Semantics.Types;
 using Hazel.Syntax;
 using Hazel.Syntax.Declarations;
@@ -119,16 +121,21 @@ public sealed class SemanticAnalyzer
                 "The 'abstract' modifier can only be applied to classes.");
         }
 
+        var previousScope = _scope;
+        _scope = new Scope(_scope);
+
         foreach (var member in node.Members)
         {
             member.Accept(this);
         }
 
+        _scope = previousScope;
+
         return UnknownTypeSymbol.Instance;
     }
 
     public override TypeSymbol VisitMethod(
-    MethodDeclaration node)
+        MethodDeclaration node)
     {
         TypeSymbol returnType =
             node.ReturnType.Accept(this);
@@ -168,6 +175,51 @@ public sealed class SemanticAnalyzer
         return UnknownTypeSymbol.Instance;
     }
 
+    public override TypeSymbol VisitField(
+        FieldDeclaration node)
+    {
+        TypeSymbol fieldType = node.Type.Accept(this);
+
+        if (fieldType == BuiltinTypes.Void)
+        {
+            throw new Exception(
+                "Fields cannot have type 'void'.");
+        }
+
+        var fieldSymbol = new Symbol(
+            node.Name,
+            SymbolKind.Variable,
+            fieldType);
+
+        if (!_scope.Define(fieldSymbol))
+        {
+            throw new Exception(
+                $"Field '{node.Name}' is already defined.");
+        }
+
+        if (node.Value != null)
+        {
+            TypeSymbol valueType = node.Value.Accept(this);
+
+            if (TryEvaluateIntegerConstant(node.Value, out long constantValue) &&
+                TryGetIntegerInfo(fieldType, out _, out _))
+            {
+                if (!IsWithinIntegerRange(fieldType, constantValue))
+                {
+                    throw new Exception(
+                        $"Integer literal '{constantValue}' is out of range for '{fieldType.Name}'.");
+                }
+            }
+            else if (!AreAssignable(valueType, fieldType))
+            {
+                throw new Exception(
+                    $"Cannot assign value of type '{valueType.Name}' to field '{node.Name}' of type '{fieldType.Name}'.");
+            }
+        }
+
+        return fieldType;
+    }
+
     public override TypeSymbol VisitParameter(
         Parameter node)
     {
@@ -175,7 +227,7 @@ public sealed class SemanticAnalyzer
     }
 
     public override TypeSymbol VisitNamedTypeReference(
-    NamedTypeReference node)
+        NamedTypeReference node)
     {
         return BuiltinTypes.Get(node.Name);
     }
@@ -227,6 +279,14 @@ public sealed class SemanticAnalyzer
         {
             throw new Exception(
                 $"Method must return '{_currentReturnType.Name}'.");
+        }
+
+        if (IsIntegerLiteralAssignmentAllowed(
+                actualType,
+                _currentReturnType,
+                node.Value))
+        {
+            return actualType;
         }
 
         if (!AreAssignable(
@@ -322,11 +382,89 @@ public sealed class SemanticAnalyzer
             $"'{targetType.Name}' using explicit cast syntax.");
     }
 
+    private static bool TryGetIntegerInfo(
+        TypeSymbol type,
+        out int bitWidth,
+        out bool isSigned)
+    {
+        if (type is BuiltinTypeSymbol builtin &&
+            builtin.BitWidth is int width &&
+            builtin.IsSigned is bool signedness)
+        {
+            bitWidth = width;
+            isSigned = signedness;
+            return true;
+        }
+
+        bitWidth = 0;
+        isSigned = false;
+        return false;
+    }
+
     private static bool IsIntegerType(TypeSymbol type)
     {
-        return type is BuiltinTypeSymbol builtin &&
-               builtin.BitWidth != null &&
-               builtin.IsSigned != null;
+        return TryGetIntegerInfo(type, out _, out _);
+    }
+
+    private static bool IsWithinIntegerRange(
+        TypeSymbol type,
+        long value)
+    {
+        if (!TryGetIntegerInfo(type, out int bitWidth, out bool isSigned))
+            return false;
+
+        return IrIntegerType.IsInRange(
+            new BigInteger(value),
+            bitWidth,
+            isSigned);
+    }
+
+    private static bool TryEvaluateIntegerConstant(
+        Expression expression,
+        out long value)
+    {
+        switch (expression)
+        {
+            case IntegerExpression integerExpression:
+                value = integerExpression.Value;
+                return true;
+
+            case BinaryExpression binaryExpression
+                when TryEvaluateIntegerConstant(binaryExpression.Left, out long leftValue) &&
+                     TryEvaluateIntegerConstant(binaryExpression.Right, out long rightValue):
+                value = binaryExpression.Operator switch
+                {
+                    BinaryOperator.Add => leftValue + rightValue,
+                    BinaryOperator.Subtract => leftValue - rightValue,
+                    BinaryOperator.Multiply => leftValue * rightValue,
+                    BinaryOperator.Divide => rightValue == 0
+                        ? throw new DivideByZeroException()
+                        : leftValue / rightValue,
+                    BinaryOperator.BitwiseAnd => leftValue & rightValue,
+                    BinaryOperator.BitwiseOr => leftValue | rightValue,
+                    _ => throw new Exception(
+                        $"Unsupported constant integer operator '{binaryExpression.Operator}'.")
+                };
+                return true;
+
+            default:
+                value = 0;
+                return false;
+        }
+    }
+
+    private static bool IsIntegerLiteralAssignmentAllowed(
+        TypeSymbol source,
+        TypeSymbol destination,
+        Expression expression)
+    {
+        if (!TryEvaluateIntegerConstant(expression, out long constantValue))
+            return false;
+
+        if (!IsIntegerType(source) || !IsIntegerType(destination))
+            return false;
+
+        return IsWithinIntegerRange(destination, constantValue);
     }
 
     public override TypeSymbol VisitBinary(
@@ -351,13 +489,19 @@ public sealed class SemanticAnalyzer
                 $"'{left.Name}' and '{right.Name}'.");
         }
 
+        if (node.Operator is BinaryOperator.BitwiseAnd or BinaryOperator.BitwiseOr)
+        {
+            node.ResolvedType = left;
+            return left;
+        }
+
         node.ResolvedType = left;
 
         return left;
     }
 
     public override TypeSymbol VisitVariable(
-    VariableStatement node)
+        VariableStatement node)
     {
         TypeSymbol declaredType =
             node.Type.Accept(this);
@@ -370,6 +514,30 @@ public sealed class SemanticAnalyzer
 
         TypeSymbol valueType =
             node.Value.Accept(this);
+
+        if (TryEvaluateIntegerConstant(node.Value, out long constantValue) &&
+            TryGetIntegerInfo(declaredType, out _, out _))
+        {
+            if (!IsWithinIntegerRange(declaredType, constantValue))
+            {
+                throw new Exception(
+                    $"Integer literal '{constantValue}' is out of range for '{declaredType.Name}'.");
+            }
+
+            var integerLiteralSymbol = new Symbol(
+                node.Name,
+                SymbolKind.Variable,
+                declaredType);
+
+            if (!_scope.Define(integerLiteralSymbol))
+            {
+                throw new Exception(
+                    $"Variable '{node.Name}' " +
+                    "is already defined.");
+            }
+
+            return declaredType;
+        }
 
         if (declaredType is BoundedStringTypeSymbol bounded &&
             valueType == BuiltinTypes.String &&

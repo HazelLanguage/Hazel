@@ -87,6 +87,20 @@ public sealed class Lexer
                 line,
                 column),
 
+            '&' => MakeToken(
+                TokenKind.Ampersand,
+                "&",
+                start,
+                line,
+                column),
+
+            '|' => MakeToken(
+                TokenKind.Pipe,
+                "|",
+                start,
+                line,
+                column),
+
             '=' => MakeToken(
                 TokenKind.Equals,
                 "=",

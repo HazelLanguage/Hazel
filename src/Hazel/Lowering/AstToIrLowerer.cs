@@ -94,14 +94,39 @@ public sealed class AstToIrLowerer
 
         foreach (var member in node.Members)
         {
-            if (member is MethodDeclaration method)
+            switch (member)
             {
-                var irMethod = (IrMethod)LowerMethod(method);
-                irType.Methods.Add(irMethod);
+                case FieldDeclaration field:
+                    var irField = (IrField)LowerField(field);
+                    irType.Fields.Add(irField);
+                    break;
+
+                case MethodDeclaration method:
+                    var irMethod = (IrMethod)LowerMethod(method);
+                    irType.Methods.Add(irMethod);
+                    break;
             }
         }
 
         return irType;
+    }
+
+    public IrNode LowerField(
+        FieldDeclaration node)
+    {
+        var type = (IrTypeReference)node.Type.Accept(this);
+        IrExpression? value = null;
+
+        if (node.Value != null)
+        {
+            value = LowerExpression(node.Value, type);
+        }
+
+        return new IrField(
+            node.AccessModifiers,
+            node.Name,
+            type,
+            value);
     }
 
     public IrNode LowerMethod(
@@ -242,6 +267,8 @@ public sealed class AstToIrLowerer
             BinaryOperator.Subtract => "-",
             BinaryOperator.Multiply => "*",
             BinaryOperator.Divide => "/",
+            BinaryOperator.BitwiseAnd => "&",
+            BinaryOperator.BitwiseOr => "|",
 
             _ => throw new Exception()
         };

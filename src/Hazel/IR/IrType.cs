@@ -21,6 +21,7 @@ public sealed class IrType : IrNode
     {
         get;
     }
+    public List<IrField> Fields { get; } = new();
     public List<IrMethod> Methods { get; } = new();
 
     public IrType(

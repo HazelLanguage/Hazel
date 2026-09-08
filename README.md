@@ -45,6 +45,11 @@ namespace Hazel
 {
     internal sealed class Program
     {
+        public variable uinteger3 version = 2;
+        public variable uinteger3 type = 1;
+        public variable uinteger1 encrypted = 0;
+        public variable uinteger1 compressed = 0;
+
         internal static void Main()
         {
             print \`"Hello, Hazel!\`";
@@ -68,7 +73,7 @@ namespace Hazel
 
 ### Transpiling
 
-By default, Hazel compiles and executes the generated program. Use `-t` or `--transpile` to output the generated C# source to stdout without executing:
+By default, Hazel compiles and executes the generated program. Use `-t` or `--transpile` to output the generated target source to stdout without executing:
 
 ```powershell
 hazel Program.hz -t
@@ -99,13 +104,90 @@ Hazel follows standard .NET naming conventions:
 
 Integer and unsigned integer types must explicitly declare their exact bit size rather than using a generic integer keyword. Hazel provides signed and unsigned variants across five fixed bit widths:
 
-| Signed Type | Unsigned Type | Bit Width | Signed Range                    | Unsigned Range     | Count         |
-| :---------- | :------------ | :-------- | :------------------------------ | :----------------- | :------------ |
-| integer8    | uinteger8     | 8-bit     | -128 to 127                     | 0 to 255           | 256           |
-| integer16   | uinteger16    | 16-bit    | -32,768 to 32,767               | 0 to 65,535        | 65,536        |
-| integer32   | uinteger32    | 32-bit    | -2,147,483,648 to 2,147,483,647 | 0 to 4,294,967,295 | 4,294,967,296 |
-| integer64   | uinteger64    | 64-bit    | -2⁶³ to 2⁶³ - 1                 | 0 to 2⁶⁴ - 1       | 2⁶⁴           |
-| integer128  | uinteger128   | 128-bit   | -2¹²⁷ to 2¹²⁷ - 1               | 0 to 2¹²⁸ - 1      | 2¹²⁸          |
+| Signed Type  | Unsigned Type | Bit Width | Signed Range                    | Unsigned Range     | Count         |
+| :----------- | :------------ | :-------- | :------------------------------ | :----------------- | :------------ |
+| `integer8`   | `uinteger8`   | 8-bit     | -128 to 127                     | 0 to 255           | 256           |
+| `integer16`  | `uinteger16`  | 16-bit    | -32,768 to 32,767               | 0 to 65,535        | 65,536        |
+| `integer32`  | `uinteger32`  | 32-bit    | -2,147,483,648 to 2,147,483,647 | 0 to 4,294,967,295 | 4,294,967,296 |
+| `integer64`  | `uinteger64`  | 64-bit    | -2⁶³ to 2⁶³ - 1                 | 0 to 2⁶⁴ - 1       | 2⁶⁴           |
+| `integer128` | `uinteger128` | 128-bit   | -2¹²⁷ to 2¹²⁷ - 1               | 0 to 2¹²⁸ - 1      | 2¹²⁸          |
+
+### Sub-Byte Integer Types
+
+Hazel also provides signed and unsigned integer types with bit widths smaller than a byte. These types are useful when a value has a naturally constrained range and dense storage is desirable.
+
+Sub-byte integers are available from 1 through 7 bits:
+
+| Signed Type | Unsigned Type | Bit Width | Signed Range | Unsigned Range | Count |
+| :---------- | :------------ | :-------- | :----------- | :------------- | ----- |
+| `integer1`  | `uinteger1`   | 1-bit     | -1 to 0      | 0 to 1         | 2     |
+| `integer2`  | `uinteger2`   | 2-bit     | -2 to 1      | 0 to 3         | 4     |
+| `integer3`  | `uinteger3`   | 3-bit     | -4 to 3      | 0 to 7         | 8     |
+| `integer4`  | `uinteger4`   | 4-bit     | -8 to 7      | 0 to 15        | 16    |
+| `integer5`  | `uinteger5`   | 5-bit     | -16 to 15    | 0 to 31        | 32    |
+| `integer6`  | `uinteger6`   | 6-bit     | -32 to 31    | 0 to 63        | 64    |
+| `integer7`  | `uinteger7`   | 7-bit     | -64 to 63    | 0 to 127       | 128   |
+
+Unlike conventional integer types, sub-byte integers are **bit-packed when used as fields within a type**. Multiple sub-byte fields can share the same underlying storage unit rather than each occupying a complete byte.
+
+Packing applies to fields that are part of an aggregate type, such as classes, structs, and records. Sub-byte integers used as local variables, parameters, or return values retain their semantic bit width but are not required to be physically bit-packed.
+
+For example:
+
+```hazel
+public class Packet
+{
+    public variable uinteger3 a;
+    public variable uinteger3 b;
+    public variable uinteger1 c;
+    public variable uinteger1 d;
+}
+```
+
+These four fields require only one 8-bit storage unit:
+
+```text
+┌───────┬───────┬───────┬───────┐
+│   c   │   d   │   a   │   b   │
+│   1   │   1   │   3   │   3   │
+└───────┴───────┴───────┴───────┘
+```
+
+Rather than allocating a separate byte for each field, Hazel packs the fields into a shared storage unit.
+
+Sub-byte integer types retain their exact Hazel type semantics regardless of their physical representation. Values are range-checked according to their declared bit width:
+
+```hazel
+variable uinteger3 value = 7; // ✅ Valid: 7 is within the range of uinteger3 (0 to 7).
+variable uinteger3 invalid = 8; // ❌ Compilation Error: Integer literal '8' is out of range for 'uinteger3'.
+```
+
+Local variables are not required to be physically packed together:
+
+```hazel
+public uinteger4 Calculate()
+{
+    variable uinteger4 a = 5;
+    variable uinteger4 b = 6;
+    return a + b;
+}
+```
+
+Here, `a` and `b` retain the `uinteger4` Hazel type, but Hazel does not require them to share a physical storage unit. The compiler and target platform may instead use a representation that is more efficient for computation, such as registers.
+
+It should be noted that packing is a **storage representation detail of aggregate fields**, rather than a requirement that every sub-byte value physically occupy its exact number of bits. Hazel generates the required storage operations automatically, so developers do not need to manually perform bit masking or shifting when accessing packed fields.
+
+Signed sub-byte integers use two's-complement representation. For example, `integer3` can represent values from `-4` through `3`.
+
+Sub-byte integers are particularly useful for:
+
+* Bit flags and boolean state
+* Small enumerations
+* Protocol and packet headers
+* Compact metadata
+* Image and color formats
+* Large collections of values with small ranges
+* Memory-sensitive data structures
 
 ### Namespace Reservation Rules
 

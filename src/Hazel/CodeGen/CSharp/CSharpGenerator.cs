@@ -98,6 +98,116 @@ public sealed class CSharpGenerator
                 builder.AppendLine(type.Name);
                 builder.AppendLine("    {");
 
+                var packedFields = type.Fields
+                    .Where(field => TryGetIntegerType(field.Type, out var integerType) && integerType.BitWidth < 8)
+                    .ToList();
+
+                if (packedFields.Count > 0)
+                {
+                    var layout = new PackedStorageLayout();
+
+                    foreach (var field in packedFields)
+                    {
+                        TryGetIntegerType(field.Type, out var integerType);
+                        layout.AddField(field.Name, integerType);
+                    }
+
+                    var initialStorage = new byte[layout.StorageUnitCount];
+
+                    foreach (var field in packedFields)
+                    {
+                        if (field.Value == null)
+                            continue;
+
+                        var packedField =
+                            layout.Fields.Single(f => f.Name == field.Name);
+
+                        if (field.Value is not IrConstant constant)
+                        {
+                            throw new NotImplementedException(
+                                $"Packed field '{field.Name}' has a non-constant initializer, " +
+                                "which is not currently supported.");
+                        }
+
+                        int value = int.Parse(constant.Value.ToString());
+
+                        initialStorage[packedField.StorageUnitIndex] |=
+                            (byte)(
+                                (value & ((1 << packedField.BitWidth) - 1))
+                                << packedField.StorageUnitBitOffset);
+                    }
+
+                    for (int i = 0; i < layout.StorageUnitCount; i++)
+                    {
+                        builder.Append("        private ");
+                        builder.Append(PackedStorageLayout.GetStorageUnitTypeName(layout.StorageUnitBits));
+                        builder.Append(" _storage");
+                        builder.Append(i);
+
+                        if (initialStorage[i] != 0)
+                        {
+                            builder.Append(" = 0b");
+                            builder.Append(Convert.ToString(initialStorage[i], 2).PadLeft(8, '0'));
+                        }
+
+                        builder.AppendLine(";");
+                    }
+
+                    foreach (var field in packedFields)
+                    {
+                        TryGetIntegerType(field.Type, out var integerType);
+                        var packedField = layout.Fields.Single(f => f.Name == field.Name);
+                        string propertyType = EmitType(field.Type);
+                        string fieldAccess = field.AccessModifiers.ToKeyword();
+
+                        builder.Append("        ");
+                        if (!string.IsNullOrEmpty(fieldAccess))
+                        {
+                            builder.Append(fieldAccess);
+                            builder.Append(" ");
+                        }
+
+                        builder.Append(propertyType);
+                        builder.Append(" ");
+                        builder.Append(field.Name);
+                        builder.AppendLine();
+
+                        builder.AppendLine("        {");
+                        builder.Append("            get => ");
+                        builder.Append(EmitPackedFieldGetter(packedField, propertyType));
+                        builder.AppendLine(";");
+                        builder.AppendLine("            set");
+                        builder.AppendLine("            {");
+                        builder.Append("                ");
+                        builder.Append(EmitPackedFieldSetter(packedField));
+                        builder.AppendLine(";");
+                        builder.AppendLine("            }");
+                        builder.AppendLine("        }");
+                    }
+                }
+
+                foreach (var field in type.Fields.Where(field => !TryGetIntegerType(field.Type, out var integerType) || integerType.BitWidth >= 8))
+                {
+                    builder.Append("        ");
+                    builder.Append(field.AccessModifiers.ToKeyword());
+                    if (!string.IsNullOrEmpty(field.AccessModifiers.ToKeyword()))
+                    {
+                        builder.Append(" ");
+                    }
+
+                    builder.Append(EmitType(field.Type));
+                    builder.Append(" ");
+                    builder.Append(field.Name);
+
+                    if (field.Value != null)
+                    {
+                        builder.Append(" = ");
+                        builder.Append(EmitExpression(field.Value));
+                    }
+
+                    builder.AppendLine(";");
+                }
+
                 foreach (var method in type.Methods)
                 {
                     _currentReturnType = method.ReturnType;
@@ -281,6 +391,144 @@ public sealed class CSharpGenerator
         }
     }
 
+    private static bool TryGetIntegerType(
+        IrTypeReference type,
+        out IrIntegerType integerType)
+    {
+        if (type is not IrNamedType named)
+        {
+            integerType = null!;
+            return false;
+        }
+
+        string name = named.Name;
+
+        if (name.StartsWith("uinteger", StringComparison.Ordinal))
+        {
+            if (int.TryParse(name["uinteger".Length..], out int bits))
+            {
+                integerType = new IrIntegerType(bits, false);
+                return true;
+            }
+        }
+
+        if (name.StartsWith("integer", StringComparison.Ordinal))
+        {
+            if (int.TryParse(name["integer".Length..], out int bits))
+            {
+                integerType = new IrIntegerType(bits, true);
+                return true;
+            }
+        }
+
+        integerType = null!;
+        return false;
+    }
+
+    private static bool TryGetIntegerType(
+        IrValueType type,
+        out IrIntegerType integerType)
+    {
+        if (type is IrIntegerType irInteger)
+        {
+            integerType = irInteger;
+            return true;
+        }
+
+        integerType = null!;
+        return false;
+    }
+
+    private static string EmitValueType(
+        IrValueType type)
+    {
+        return type switch
+        {
+            IrIntegerType integer =>
+                CSharpTypeExtensions.ToCSharpTypeName(
+                    integer.IsSigned
+                        ? $"integer{integer.BitWidth}"
+                        : $"uinteger{integer.BitWidth}"),
+
+            IrStringType => "string",
+
+            IrBoundedStringType bounded =>
+                $"Hazel.Runtime.BoundedString{bounded.MaximumLength}",
+
+            _ => throw new Exception(
+                $"Unknown IR value type: {type.GetType().Name}")
+        };
+    }
+
+    private static string EmitPackedFieldGetter(
+        PackedField field,
+        string propertyType)
+    {
+        string unitName =
+            $"_storage{field.StorageUnitIndex}";
+
+        int mask =
+            (1 << field.BitWidth) - 1;
+
+        string raw =
+            $"(({unitName} >> {field.StorageUnitBitOffset}) & {mask})";
+
+        if (!field.Type.IsSigned)
+        {
+            return $"({propertyType}){raw}";
+        }
+
+        int signBit =
+            1 << (field.BitWidth - 1);
+
+        return
+            $"({propertyType})" +
+            $"(({raw} & {signBit}) != 0 " +
+            $"? {raw} - {1 << field.BitWidth} " +
+            $": {raw})";
+    }
+
+    private static string EmitPackedFieldSetter(
+        PackedField field)
+    {
+        string unitType =
+            PackedStorageLayout.GetStorageUnitTypeName(
+                field.StorageUnitBits);
+
+        string unitName =
+            $"_storage{field.StorageUnitIndex}";
+
+        int valueMask =
+            (1 << field.BitWidth) - 1;
+
+        int storageMask =
+            valueMask << field.StorageUnitBitOffset;
+
+        return
+            $"{unitName} = ({unitType})" +
+            $"(({unitName} & ~{storageMask}) | " +
+            $"((value & {valueMask}) << " +
+            $"{field.StorageUnitBitOffset}))";
+    }
+
+    private static string GetStorageUnitMaskExpression(
+        string unitType,
+        int bitIndex,
+        bool isClear)
+    {
+        string literal = unitType switch
+        {
+            "byte" => $"((byte)(1 << {bitIndex}))",
+            "ushort" => $"((ushort)(1 << {bitIndex}))",
+            "uint" => $"((uint)(1 << {bitIndex}))",
+            "ulong" => $"((ulong)(1 << {bitIndex}))",
+            "System.UInt128" => $"((System.UInt128)1 << {bitIndex})",
+            _ => throw new InvalidOperationException($"Unsupported storage unit type: {unitType}.")
+        };
+
+        return isClear ? $"(~{literal})" : literal;
+    }
+
     private string EmitExpression(
         IrExpression expression)
     {
@@ -293,9 +541,13 @@ public sealed class CSharpGenerator
                 variable.Name,
 
             IrBinary binary =>
-                $"({EmitExpression(binary.Left)} " +
-                $"{binary.Operator} " +
-                $"{EmitExpression(binary.Right)})",
+                TryGetIntegerType(binary.Type, out var integerType)
+                    ? $"({EmitValueType(integerType)})({EmitExpression(binary.Left)} " +
+                      $"{binary.Operator} " +
+                      $"{EmitExpression(binary.Right)})"
+                    : $"({EmitExpression(binary.Left)} " +
+                      $"{binary.Operator} " +
+                      $"{EmitExpression(binary.Right)})",
 
             IrString stringExpression =>
                 EmitStringLiteral(stringExpression.Value),
@@ -317,7 +569,7 @@ public sealed class CSharpGenerator
     }
 
     private string EmitType(
-    IrTypeReference type)
+        IrTypeReference type)
     {
         return type switch
         {
@@ -339,7 +591,7 @@ public sealed class CSharpGenerator
     }
 
     private string EmitStringLiteral(
-    string value)
+        string value)
     {
         return "\"" +
             value

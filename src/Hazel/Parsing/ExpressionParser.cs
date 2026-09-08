@@ -51,6 +51,30 @@ public sealed class ExpressionParser
 
     private Expression ParsePrimary()
     {
+        if (Match(TokenKind.Minus, out var minusToken))
+        {
+            Expression operand = ParsePrimary();
+
+            if (operand is IntegerExpression integerExpression)
+            {
+                return new IntegerExpression(
+                    -integerExpression.Value,
+                    SourceSpan.FromBounds(
+                        minusToken.Span.Start,
+                        integerExpression.Span.End));
+            }
+
+            return new BinaryExpression(
+                new IntegerExpression(
+                    0,
+                    minusToken.Span),
+                BinaryOperator.Subtract,
+                operand,
+                SourceSpan.FromBounds(
+                    minusToken.Span.Start,
+                    operand.Span.End));
+        }
+
         if (Match(TokenKind.Integer, out var integer))
         {
             return new IntegerExpression(
@@ -184,6 +208,8 @@ public sealed class ExpressionParser
         {
             TokenKind.Plus => 10,
             TokenKind.Minus => 10,
+            TokenKind.Ampersand => 8,
+            TokenKind.Pipe => 8,
 
             TokenKind.Star => 20,
             TokenKind.Slash => 20,
@@ -201,6 +227,8 @@ public sealed class ExpressionParser
             TokenKind.Minus => BinaryOperator.Subtract,
             TokenKind.Star => BinaryOperator.Multiply,
             TokenKind.Slash => BinaryOperator.Divide,
+            TokenKind.Ampersand => BinaryOperator.BitwiseAnd,
+            TokenKind.Pipe => BinaryOperator.BitwiseOr,
 
             _ => throw new Exception(
                 $"Not a binary operator: {kind}")

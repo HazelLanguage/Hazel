@@ -23,6 +23,9 @@ public abstract class AstVisitor<T>
     public virtual T VisitMethod(
         MethodDeclaration node) => default!;
 
+    public virtual T VisitField(
+        FieldDeclaration node) => default!;
+
     public virtual T VisitParameter(
         Parameter node) => default!;
 

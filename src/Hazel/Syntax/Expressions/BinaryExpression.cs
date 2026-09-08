@@ -7,7 +7,9 @@ public enum BinaryOperator
     Add,
     Subtract,
     Multiply,
-    Divide
+    Divide,
+    BitwiseAnd,
+    BitwiseOr
 }
 
 public sealed class BinaryExpression : Expression

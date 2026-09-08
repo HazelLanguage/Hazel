@@ -44,29 +44,37 @@ public static class BuiltinTypes
     public static readonly TypeSymbol UnsignedInteger128 =
         new BuiltinTypeSymbol("uinteger128", 128, false);
 
-    private static readonly Dictionary<string, TypeSymbol> _types = new()
+    private static readonly Dictionary<string, TypeSymbol> _types = new();
+
+    static BuiltinTypes()
     {
-        ["void"] = Void,
-        ["dynamic"] = Dynamic,
+        Add("void", Void);
+        Add("dynamic", Dynamic);
+        Add("string", String);
+        Add("character", Character);
 
-        ["string"] = String,
-        ["character"] = Character,
+        Add("integer8", Integer8);
+        Add("uinteger8", UnsignedInteger8);
+        Add("integer16", Integer16);
+        Add("uinteger16", UnsignedInteger16);
+        Add("integer32", Integer32);
+        Add("uinteger32", UnsignedInteger32);
+        Add("integer64", Integer64);
+        Add("uinteger64", UnsignedInteger64);
+        Add("integer128", Integer128);
+        Add("uinteger128", UnsignedInteger128);
 
-        ["integer8"] = Integer8,
-        ["uinteger8"] = UnsignedInteger8,
+        for (int bitWidth = 1; bitWidth <= 128; bitWidth++)
+        {
+            Add($"integer{bitWidth}", new BuiltinTypeSymbol($"integer{bitWidth}", bitWidth, true));
+            Add($"uinteger{bitWidth}", new BuiltinTypeSymbol($"uinteger{bitWidth}", bitWidth, false));
+        }
+    }
 
-        ["integer16"] = Integer16,
-        ["uinteger16"] = UnsignedInteger16,
-
-        ["integer32"] = Integer32,
-        ["uinteger32"] = UnsignedInteger32,
-
-        ["integer64"] = Integer64,
-        ["uinteger64"] = UnsignedInteger64,
-
-        ["integer128"] = Integer128,
-        ["uinteger128"] = UnsignedInteger128
-    };
+    private static void Add(string name, TypeSymbol type)
+    {
+        _types[name] = type;
+    }
 
     public static TypeSymbol Get(string name)
     {

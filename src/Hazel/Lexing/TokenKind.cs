@@ -32,6 +32,8 @@ public enum TokenKind
     Minus,
     Star,
     Slash,
+    Ampersand,
+    Pipe,
 
     Equals,
 

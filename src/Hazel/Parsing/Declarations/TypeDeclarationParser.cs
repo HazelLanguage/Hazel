@@ -2,6 +2,7 @@ using Hazel.Diagnostics;
 using Hazel.Lexing;
 using Hazel.Syntax;
 using Hazel.Syntax.Declarations;
+using Hazel.Syntax.Expressions;
 using Hazel.Syntax.Types;
 
 namespace Hazel.Parsing.Declarations;
@@ -55,8 +56,56 @@ public sealed class TypeDeclarationParser : IDeclarationParser, IMemberParser
 
         while (!parser.Check(TokenKind.RightBrace))
         {
-            members.Add(
-                _memberRegistry.Parse(parser));
+            int savedPosition = parser.Position;
+
+            try
+            {
+                AccessModifiers fieldAccess = parser.ConsumeAccessModifiers();
+
+                if (fieldAccess == AccessModifiers.None ||
+                    !parser.Check(TokenKind.Var))
+                {
+                    parser.SetPosition(savedPosition);
+                    members.Add(_memberRegistry.Parse(parser));
+                    continue;
+                }
+
+                parser.Consume(TokenKind.Var);
+
+                TypeReference fieldType = parser.ConsumeTypeReference();
+                Token fieldName = parser.ConsumeIdentifier();
+
+                if (parser.Check(TokenKind.LeftParen))
+                {
+                    parser.SetPosition(savedPosition);
+                    members.Add(_memberRegistry.Parse(parser));
+                    continue;
+                }
+
+                Expression? fieldValue = null;
+                if (parser.TryConsume(TokenKind.Equals))
+                {
+                    var expressionParser = parser.CreateExpressionParser();
+                    fieldValue = expressionParser.ParseExpression();
+                    parser.SetPosition(expressionParser.Position);
+                }
+
+                parser.Consume(TokenKind.Semicolon);
+
+                members.Add(new FieldDeclaration(
+                    fieldAccess,
+                    fieldType,
+                    fieldName.Text,
+                    fieldValue,
+                    SourceSpan.FromBounds(
+                        savedPosition,
+                        parser.Position)));
+            }
+            catch
+            {
+                parser.SetPosition(savedPosition);
+                members.Add(_memberRegistry.Parse(parser));
+            }
         }
 
         Token rightBrace =
