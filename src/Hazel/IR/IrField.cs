@@ -10,6 +10,11 @@ public sealed class IrField : IrNode
         get;
     }
 
+    public FieldModifiers Modifiers
+    {
+        get;
+    }
+
     public string Name
     {
         get;
@@ -27,11 +32,13 @@ public sealed class IrField : IrNode
 
     public IrField(
         AccessModifiers accessModifiers,
+        FieldModifiers modifiers,
         string name,
         IrTypeReference type,
         IrExpression? value)
     {
         AccessModifiers = accessModifiers;
+        Modifiers = modifiers;
         Name = name;
         Type = type;
         Value = value;

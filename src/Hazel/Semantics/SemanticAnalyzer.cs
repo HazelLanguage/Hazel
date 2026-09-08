@@ -186,6 +186,13 @@ public sealed class SemanticAnalyzer
                 "Fields cannot have type 'void'.");
         }
 
+        if (node.Modifiers.HasFlag(FieldModifiers.Unpacked) &&
+            (!TryGetIntegerInfo(fieldType, out int bitWidth, out _) || bitWidth >= 8))
+        {
+            throw new Exception(
+                "The 'unpacked' modifier can only be applied to sub-byte integer fields.");
+        }
+
         var fieldSymbol = new Symbol(
             node.Name,
             SymbolKind.Variable,

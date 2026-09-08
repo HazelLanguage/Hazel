@@ -124,6 +124,7 @@ public sealed class AstToIrLowerer
 
         return new IrField(
             node.AccessModifiers,
+            node.Modifiers,
             node.Name,
             type,
             value);

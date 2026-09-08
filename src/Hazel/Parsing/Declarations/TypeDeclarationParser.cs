@@ -60,9 +60,24 @@ public sealed class TypeDeclarationParser : IDeclarationParser, IMemberParser
 
             try
             {
-                AccessModifiers fieldAccess = parser.ConsumeAccessModifiers();
+                AccessModifiers fieldAccess = AccessModifiers.None;
+                FieldModifiers fieldModifiers = FieldModifiers.None;
 
-                if (fieldAccess == AccessModifiers.None ||
+                while (parser.Peek().Kind.IsAccessModifier() ||
+                       parser.Peek().Kind.IsFieldModifier())
+                {
+                    if (parser.Check(TokenKind.Static) ||
+                        parser.Check(TokenKind.Unpacked))
+                    {
+                        fieldModifiers |= parser.Advance().Kind.ToFieldModifier();
+                    }
+                    else
+                    {
+                        fieldAccess |= parser.Advance().Kind.ToAccessModifier();
+                    }
+                }
+
+                if ((fieldAccess == AccessModifiers.None && fieldModifiers == FieldModifiers.None) ||
                     !parser.Check(TokenKind.Var))
                 {
                     parser.SetPosition(savedPosition);
@@ -94,6 +109,7 @@ public sealed class TypeDeclarationParser : IDeclarationParser, IMemberParser
 
                 members.Add(new FieldDeclaration(
                     fieldAccess,
+                    fieldModifiers,
                     fieldType,
                     fieldName.Text,
                     fieldValue,

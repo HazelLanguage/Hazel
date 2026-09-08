@@ -130,30 +130,34 @@ Sub-byte integers are available from 1 through 7 bits:
 
 Unlike conventional integer types, sub-byte integers are **bit-packed when used as fields within a type**. Multiple sub-byte fields can share the same underlying storage unit rather than each occupying a complete byte.
 
-Packing applies to fields that are part of an aggregate type, such as classes, structs, and records. Sub-byte integers used as local variables, parameters, or return values retain their semantic bit width but are not required to be physically bit-packed.
+Packing applies to fields that are part of an aggregate type, such as classes, structs, and records. Sub-byte integers used as local variables, parameters, or return values retain their semantic bit width but are not required to be physically bit-packed. Packing is performed separately for static and instance fields. Static and instance packed fields never share a backing storage unit.
 
-For example:
+Fields are packed into storage units in Least Significant Bit (LSB) first order. The first declared field occupies bit offset `0` (the least significant bit) of the storage unit, and subsequent fields are packed into progressively higher bit positions. Fields are also packed strictly in order of declaration. If a field cannot fit within the remaining bits of the current storage unit, it is aligned to the start of the next storage unit. To optimize storage density, order your fields by bit width or manually group small fields together.
+
+Rather than allocating a separate byte for each field, Hazel packs the fields into a shared storage unit:
 
 ```hazel
 public class Packet
 {
-    public variable uinteger3 a;
-    public variable uinteger3 b;
-    public variable uinteger1 c;
-    public variable uinteger1 d;
+    public variable uinteger3 a; // bits 0..2
+    public variable uinteger3 b; // bits 3..5
+    public variable uinteger1 c; // bit 6
+    public variable uinteger1 d; // bit 7
 }
 ```
 
 These four fields require only one 8-bit storage unit:
 
 ```text
-┌───────┬───────┬───────┬───────┐
-│   c   │   d   │   a   │   b   │
-│   1   │   1   │   3   │   3   │
-└───────┴───────┴───────┴───────┘
+   bit 7     bit 6   bits 5..3 bits 2..0
+┌─────────┬─────────┬─────────┬─────────┐
+│    d    │    c    │    b    │    a    │
+│    1    │    1    │    3    │    3    │
+└─────────┴─────────┴─────────┴─────────┘
+MSB (bit 7)                   LSB (bit 0)
 ```
 
-Rather than allocating a separate byte for each field, Hazel packs the fields into a shared storage unit.
+Declaring the example fields in reverse order would result in the bits being packed in the opposite order, with `a` occupying the most significant bits and `d` occupying the least significant bit.
 
 Sub-byte integer types retain their exact Hazel type semantics regardless of their physical representation. Values are range-checked according to their declared bit width:
 
@@ -161,6 +165,37 @@ Sub-byte integer types retain their exact Hazel type semantics regardless of the
 variable uinteger3 value = 7; // ✅ Valid: 7 is within the range of uinteger3 (0 to 7).
 variable uinteger3 invalid = 8; // ❌ Compilation Error: Integer literal '8' is out of range for 'uinteger3'.
 ```
+
+Signed sub-byte integers use two's-complement representation. For example, `integer3` can represent values from `-4` through `3`.
+
+It should be noted that packing is a **storage representation detail of aggregate fields**, rather than a requirement that every sub-byte value physically occupy its exact number of bits. Hazel generates the required storage operations automatically, so developers do not need to manually perform bit masking or shifting when accessing packed fields.
+
+Sub-byte integers are particularly useful for:
+
+* Bit flags and boolean state
+* Small enumerations
+* Protocol and packet headers
+* Compact metadata
+* Image and color formats
+* Large collections of values with small ranges
+* Memory-sensitive data structures
+
+#### Opting Out of Packing
+
+Individual fields can opt out of automatic packing by using the `unpacked` field modifier:
+
+```hazel
+public class Packet
+{
+    public variable uinteger3 a;
+    public variable uinteger3 b;
+    public unpacked variable uinteger3 c;
+}
+```
+
+In this example, `a` and `b` may share a backing storage unit, while `c` is stored independently from any other fields.
+
+#### Local Variables
 
 Local variables are not required to be physically packed together:
 
@@ -174,20 +209,6 @@ public uinteger4 Calculate()
 ```
 
 Here, `a` and `b` retain the `uinteger4` Hazel type, but Hazel does not require them to share a physical storage unit. The compiler and target platform may instead use a representation that is more efficient for computation, such as registers.
-
-It should be noted that packing is a **storage representation detail of aggregate fields**, rather than a requirement that every sub-byte value physically occupy its exact number of bits. Hazel generates the required storage operations automatically, so developers do not need to manually perform bit masking or shifting when accessing packed fields.
-
-Signed sub-byte integers use two's-complement representation. For example, `integer3` can represent values from `-4` through `3`.
-
-Sub-byte integers are particularly useful for:
-
-* Bit flags and boolean state
-* Small enumerations
-* Protocol and packet headers
-* Compact metadata
-* Image and color formats
-* Large collections of values with small ranges
-* Memory-sensitive data structures
 
 ### Namespace Reservation Rules
 

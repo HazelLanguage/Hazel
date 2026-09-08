@@ -15,6 +15,7 @@ public enum TokenKind
     Sealed,
     Abstract,
     Static,
+    Unpacked,
 
     Namespace,
     Import,

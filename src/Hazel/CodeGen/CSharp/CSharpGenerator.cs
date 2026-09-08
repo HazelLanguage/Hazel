@@ -98,15 +98,36 @@ public sealed class CSharpGenerator
                 builder.AppendLine(type.Name);
                 builder.AppendLine("    {");
 
-                var packedFields = type.Fields
-                    .Where(field => TryGetIntegerType(field.Type, out var integerType) && integerType.BitWidth < 8)
+                var instancePackedFields = type.Fields
+                    .Where(field =>
+                        !field.Modifiers.HasFlag(FieldModifiers.Static) &&
+                        !field.Modifiers.HasFlag(FieldModifiers.Unpacked) &&
+                        TryGetIntegerType(field.Type, out var integerType) &&
+                        integerType.BitWidth < 8)
                     .ToList();
 
-                if (packedFields.Count > 0)
+                var staticPackedFields = type.Fields
+                    .Where(field =>
+                        field.Modifiers.HasFlag(FieldModifiers.Static) &&
+                        !field.Modifiers.HasFlag(FieldModifiers.Unpacked) &&
+                        TryGetIntegerType(field.Type, out var integerType) &&
+                        integerType.BitWidth < 8)
+                    .ToList();
+
+                foreach (var packedFieldSet in new[]
                 {
+                    (IsStatic: false, Fields: instancePackedFields),
+                    (IsStatic: true, Fields: staticPackedFields)
+                })
+                {
+                    if (packedFieldSet.Fields.Count == 0)
+                    {
+                        continue;
+                    }
+
                     var layout = new PackedStorageLayout();
 
-                    foreach (var field in packedFields)
+                    foreach (var field in packedFieldSet.Fields)
                     {
                         TryGetIntegerType(field.Type, out var integerType);
                         layout.AddField(field.Name, integerType);
@@ -114,7 +135,7 @@ public sealed class CSharpGenerator
 
                     var initialStorage = new byte[layout.StorageUnitCount];
 
-                    foreach (var field in packedFields)
+                    foreach (var field in packedFieldSet.Fields)
                     {
                         if (field.Value == null)
                             continue;
@@ -137,11 +158,19 @@ public sealed class CSharpGenerator
                                 << packedField.StorageUnitBitOffset);
                     }
 
+                    string storagePrefix = packedFieldSet.IsStatic ? "_staticStorage" : "_storage";
+
                     for (int i = 0; i < layout.StorageUnitCount; i++)
                     {
                         builder.Append("        private ");
+                        if (packedFieldSet.IsStatic)
+                        {
+                            builder.Append("static ");
+                        }
+
                         builder.Append(PackedStorageLayout.GetStorageUnitTypeName(layout.StorageUnitBits));
-                        builder.Append(" _storage");
+                        builder.Append(" ");
+                        builder.Append(storagePrefix);
                         builder.Append(i);
 
                         if (initialStorage[i] != 0)
@@ -153,18 +182,25 @@ public sealed class CSharpGenerator
                         builder.AppendLine(";");
                     }
 
-                    foreach (var field in packedFields)
+                    foreach (var field in packedFieldSet.Fields)
                     {
                         TryGetIntegerType(field.Type, out var integerType);
                         var packedField = layout.Fields.Single(f => f.Name == field.Name);
                         string propertyType = EmitType(field.Type);
                         string fieldAccess = field.AccessModifiers.ToKeyword();
+                        string staticModifier = packedFieldSet.IsStatic ? "static " : string.Empty;
+                        string storageName = $"{storagePrefix}{packedField.StorageUnitIndex}";
 
                         builder.Append("        ");
                         if (!string.IsNullOrEmpty(fieldAccess))
                         {
                             builder.Append(fieldAccess);
                             builder.Append(" ");
+                        }
+
+                        if (!string.IsNullOrEmpty(staticModifier))
+                        {
+                            builder.Append(staticModifier);
                         }
 
                         builder.Append(propertyType);
@@ -174,25 +210,33 @@ public sealed class CSharpGenerator
 
                         builder.AppendLine("        {");
                         builder.Append("            get => ");
-                        builder.Append(EmitPackedFieldGetter(packedField, propertyType));
+                        builder.Append(EmitPackedFieldGetter(packedField, propertyType, storageName));
                         builder.AppendLine(";");
                         builder.AppendLine("            set");
                         builder.AppendLine("            {");
                         builder.Append("                ");
-                        builder.Append(EmitPackedFieldSetter(packedField));
+                        builder.Append(EmitPackedFieldSetter(packedField, storageName));
                         builder.AppendLine(";");
                         builder.AppendLine("            }");
                         builder.AppendLine("        }");
                     }
                 }
 
-                foreach (var field in type.Fields.Where(field => !TryGetIntegerType(field.Type, out var integerType) || integerType.BitWidth >= 8))
+                foreach (var field in type.Fields.Where(field =>
+                    !TryGetIntegerType(field.Type, out var integerType) ||
+                    integerType.BitWidth >= 8 ||
+                    field.Modifiers.HasFlag(FieldModifiers.Unpacked)))
                 {
                     builder.Append("        ");
                     builder.Append(field.AccessModifiers.ToKeyword());
                     if (!string.IsNullOrEmpty(field.AccessModifiers.ToKeyword()))
                     {
                         builder.Append(" ");
+                    }
+
+                    if (field.Modifiers.HasFlag(FieldModifiers.Static))
+                    {
+                        builder.Append("static ");
                     }
 
                     builder.Append(EmitType(field.Type));
@@ -462,10 +506,11 @@ public sealed class CSharpGenerator
 
     private static string EmitPackedFieldGetter(
         PackedField field,
-        string propertyType)
+        string propertyType,
+        string storageName)
     {
         string unitName =
-            $"_storage{field.StorageUnitIndex}";
+            storageName;
 
         int mask =
             (1 << field.BitWidth) - 1;
@@ -489,14 +534,15 @@ public sealed class CSharpGenerator
     }
 
     private static string EmitPackedFieldSetter(
-        PackedField field)
+        PackedField field,
+        string storageName)
     {
         string unitType =
             PackedStorageLayout.GetStorageUnitTypeName(
                 field.StorageUnitBits);
 
         string unitName =
-            $"_storage{field.StorageUnitIndex}";
+            storageName;
 
         int valueMask =
             (1 << field.BitWidth) - 1;

@@ -208,6 +208,7 @@ public sealed class Lexer
             "internal" => TokenKind.Internal,
             "sealed" => TokenKind.Sealed,
             "static" => TokenKind.Static,
+            "unpacked" => TokenKind.Unpacked,
 
             "namespace" => TokenKind.Namespace,
             "import" => TokenKind.Import,

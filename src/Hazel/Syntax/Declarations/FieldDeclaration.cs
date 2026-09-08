@@ -11,6 +11,11 @@ public sealed class FieldDeclaration : Declaration
         get;
     }
 
+    public FieldModifiers Modifiers
+    {
+        get;
+    }
+
     public TypeReference Type
     {
         get;
@@ -28,6 +33,7 @@ public sealed class FieldDeclaration : Declaration
 
     public FieldDeclaration(
         AccessModifiers accessModifiers,
+        FieldModifiers modifiers,
         TypeReference type,
         string name,
         Expression? value,
@@ -35,6 +41,7 @@ public sealed class FieldDeclaration : Declaration
         : base(span)
     {
         AccessModifiers = accessModifiers;
+        Modifiers = modifiers;
         Type = type;
         Name = name;
         Value = value;

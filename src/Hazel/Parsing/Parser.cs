@@ -161,6 +161,25 @@ public sealed class Parser
         return modifiers;
     }
 
+    public FieldModifiers ConsumeFieldModifiers()
+    {
+        FieldModifiers modifiers = FieldModifiers.None;
+
+        while (Peek().Kind.IsFieldModifier())
+        {
+            Token token = Advance();
+            modifiers |= token.Kind.ToFieldModifier();
+        }
+
+        if (!modifiers.IsValid())
+        {
+            throw new Exception(
+                "Invalid combination of field modifiers.");
+        }
+
+        return modifiers;
+    }
+
     public TypeReference ConsumeTypeReference()
     {
         Token token = Peek();
